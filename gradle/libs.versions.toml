@@ -1,0 +1,27 @@
+# Versions match the official Pleos sample app, which already builds on this PC.
+[versions]
+agp = "8.8.2"
+kotlin = "2.0.0"
+coreKtx = "1.16.0"
+activityCompose = "1.10.1"
+lifecycle = "2.9.0"
+composeBom = "2024.04.01"
+vehicleSdk = "2.3.2"
+naviHelperSdk = "3.0.5"
+zxing = "3.5.3"
+
+[libraries]
+androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "activityCompose" }
+androidx-lifecycle-runtime-compose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "lifecycle" }
+androidx-compose-bom = { group = "androidx.compose", name = "compose-bom", version.ref = "composeBom" }
+androidx-ui = { group = "androidx.compose.ui", name = "ui" }
+androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
+zxing-core = { module = "com.google.zxing:core", version.ref = "zxing" }
+navi-helper-sdk = { module = "ai.pleos.playground:NaviHelper", version.ref = "naviHelperSdk" }
+vehicle-sdk = { module = "ai.pleos.playground:Vehicle", version.ref = "vehicleSdk" }
+
+[plugins]
+android-application = { id = "com.android.application", version.ref = "agp" }
+kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
+kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

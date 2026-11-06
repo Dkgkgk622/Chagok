@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Pleos Vehicle SDK (protection level: normal). Only what the app uses. -->
+    <uses-permission android:name="pleos.car.permission.CAR_DRIVE" />   <!-- odometer, brake, steering -->
+    <uses-permission android:name="pleos.car.permission.CAR_ENERGY" />  <!-- EV battery -->
+    <uses-permission android:name="pleos.car.permission.CAR_SAFETY" />  <!-- brake fluid, washer, airbag -->
+    <uses-permission android:name="pleos.car.permission.PRIVATE_CAR_SAFETY" />  <!-- warning lamps (telltales) -->
+
+    <!-- Pleos NaviHelper SDK: road speed limit and location for overspeed records -->
+    <uses-permission android:name="pleos.car.permission.NAVI_ROUTE" />
+    <!-- registration number for the logbook header (CarInfo); if not granted the user types it -->
+    <uses-permission android:name="pleos.car.permission.CAR_INFO" />
+    <uses-permission android:name="pleos.car.permission.PRIVATE_CAR_INFO" />
+
+    <!-- Android Automotive car API -->
+    <uses-permission android:name="android.car.permission.CAR_SPEED" />      <!-- vehicle speed (asked at runtime) -->
+    <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" /> <!-- gear -->
+
+    <!-- Keep recording while driving even when another app is on screen -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <application
+        android:name=".ChagokApp"
+        android:allowBackup="false"
+        android:icon="@android:drawable/sym_def_app_icon"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <service
+            android:name=".RecorderService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="Records vehicle trip data while the vehicle is not in park" />
+        </service>
+
+        <receiver
+            android:name=".BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
+    </application>
+
+</manifest>

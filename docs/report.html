@@ -1,0 +1,365 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>차곡 보고서</title>
+<style>
+  :root { --bg:#f3f4f6; --card:#fff; --ink:#111827; --sub:#6b7280; --accent:#0f766e; --line:#e5e7eb; --warn:#b91c1c; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg:#0b0f14; --card:#151b23; --ink:#f3f4f6; --sub:#9ca3af; --accent:#2dd4bf; --line:#263040; --warn:#f87171; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font-family: -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif; line-height:1.5; }
+  main { max-width: 720px; margin: 0 auto; padding: 20px 16px 48px; }
+  .brand { color: var(--accent); font-weight: 700; font-size: 14px; letter-spacing: .02em; }
+  h1 { font-size: 24px; margin: 4px 0 2px; }
+  .period { color: var(--sub); font-size: 14px; }
+  section { background: var(--card); border-radius: 16px; padding: 16px; margin-top: 14px; }
+  h2 { font-size: 16px; margin: 0 0 8px; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:7px 0; border-top:1px solid var(--line); font-size:15px; }
+  .row:first-of-type { border-top:none; }
+  .row span:first-child { color: var(--sub); }
+  .row span:last-child { font-weight: 600; text-align: right; }
+  .table-wrap { overflow-x: auto; }
+  table { width:100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:last-child, td:last-child { text-align: left; }
+  th { color: var(--sub); font-weight: 600; }
+  .notes { color: var(--sub); font-size: 13px; }
+  .notes li { margin: 4px 0; }
+  .check { font-family: ui-monospace, Menlo, Consolas, monospace; }
+  .actions { display:flex; gap:8px; margin-top:16px; }
+  button { flex:1; border:0; border-radius: 12px; padding: 12px; font-size: 15px; font-weight: 600; background: var(--accent); color: #fff; }
+  .error { color: var(--warn); }
+  #map, #mapfb { width:100%; height:420px; border-radius:12px; background:#eef2f7; overflow:hidden; position:relative; }
+  #mapfb svg { width:100%; height:100%; display:block; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px 14px; font-size:13px; color:var(--sub); margin:0 0 10px; }
+  .legend i { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:5px; vertical-align:-1px; }
+  .dot { position:relative; width:22px; height:22px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.25); cursor:pointer; }
+
+  .dot.ring { width:22px; height:22px; background:transparent !important; border:5px solid #0891b2; box-shadow:0 0 0 2px #fff, inset 0 0 0 2px #fff; }
+  .dot.ring.stop { width:36px; height:36px; } /* 1-minute stop: bigger, an event at the same spot shows inside */
+  .dot.min { width:10px; height:10px; border:0; background:#fff; box-shadow:0 0 0 2px #475569; }
+  .layers { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 10px; }
+  .layers button { flex:0 0 auto; background:#f3f4f6; color:var(--sub); padding:9px 14px; font-size:14px; border-radius:20px; }
+  .layers button.on { background:#ccfbf1; color:#111827; }
+  .layers button i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#d1d5db; }
+  #info { margin-top:12px; }
+  #info .hint { color:var(--sub); font-size:14px; }
+  section > .hint { color:var(--sub); font-size:14px; margin:0 0 8px; }
+  #rv { width:100%; height:240px; border-radius:12px; margin-top:10px; display:none; }
+  .rvmsg { color:var(--sub); font-size:13px; margin-top:8px; }
+  @media print { .actions { display:none; } body { background:#fff; } section { border:1px solid #ddd; } }
+</style>
+</head>
+<body>
+<main id="app">
+  <div class="brand">차곡</div>
+  <h1>보고서를 불러오는 중…</h1>
+</main>
+<script>
+// Kakao Maps JavaScript key (Kakao Developers > 내 애플리케이션 > 앱 키 > JavaScript 키).
+// The page's address (https://dkgkgk622.github.io) must be registered under 플랫폼 > Web.
+// Without a key the route is drawn as a simple picture (no map tiles, address or road view).
+const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY';
+
+(async function () {
+  const app = document.getElementById('app');
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+  function fail(msg) {
+    app.innerHTML = '<div class="brand">차곡</div><h1>보고서를 열 수 없어요</h1><p class="error">' + esc(msg) + '</p>' +
+      '<p class="period">차 화면의 QR 코드를 휴대폰 카메라로 다시 찍어 주세요.</p>';
+  }
+
+  const hash = location.hash.slice(1);
+  if (!hash) return fail('보고서 데이터가 없습니다.');
+  if (!('DecompressionStream' in window)) return fail('이 브라우저는 지원되지 않습니다. 최신 Chrome 또는 Safari에서 열어 주세요.');
+
+  let report;
+  try {
+    // The data lives only in the URL fragment, which the browser never sends to a server.
+    const b64 = hash.replace(/-/g, '+').replace(/_/g, '/');
+    const bin = atob(b64 + '='.repeat((4 - b64.length % 4) % 4));
+    const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+    const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+    report = JSON.parse(await new Response(stream).text());
+  } catch (e) {
+    return fail('데이터를 해석하지 못했습니다.');
+  }
+
+  const created = new Date(report.created).toLocaleString('ko-KR');
+  let html = '<div class="brand">차곡 · 차량이 자동으로 기록한 데이터</div>' +
+    '<h1>' + esc(report.title) + '</h1>' +
+    '<div class="period">' + esc(report.period) + ' · 생성 ' + esc(created) + '</div>';
+
+  let route = null;
+  const hideNote = report.route && report.route.h
+    ? '<p class="hint">집·회사 위치 보호를 위해 출발·도착 지점 반경 ' + Number(report.route.h) + 'm 안은 표시하지 않습니다.</p>' : '';
+  if (report.route && !report.route.b && report.route.h) {
+    html += '<section><h2>경로</h2>' + hideNote + '<p class="hint">짧은 운행이라 이 범위를 빼면 표시할 경로가 없습니다. 전체 경로는 차 화면에서 볼 수 있어요.</p></section>';
+  }
+  if (report.route && report.route.b) {
+    route = decodeRoute(report.route);
+    html += '<section><h2>경로</h2>' + hideNote + '<div class="legend">' +
+      '<span><i style="background:#fff;box-shadow:0 0 0 2px #475569"></i>' + (route.iv >= 120 ? Math.round(route.iv / 60) + '분' : '1분') + '마다 위치</span>' +
+      '<span><i style="background:#7c3aed"></i>과속</span></div>' +
+      '<div class="layers">' + Object.entries(LAYERS).map(([k, l]) =>
+        '<button data-layer="' + k + '"><i></i>' + l.label + '</button>').join('') + '</div>' +
+      '<div id="map"></div><div id="info"><p class="hint">경로의 점이나 표시를 누르면 그때의 시각·주소·속도·제한속도와 주변 사진이 나와요.</p></div>' +
+      '<div id="rv"></div></section>';
+  }
+
+  // Sections (for a route report they come under the map).
+  for (const sec of report.sections || []) {
+    html += '<section><h2>' + esc(sec.t) + '</h2>';
+    for (const [k, v] of sec.r || []) html += '<div class="row"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>';
+    html += '</section>';
+  }
+
+  if (report.tx) report.tax = decodeTax(report.tx);
+  if (report.tax && report.tax.length) {
+    html += '<section><h2>운행 내역 (국세청 별지 서식 ③~⑩)</h2><div class="table-wrap"><table><thead><tr>' +
+      ['사용일자', '사용자', '주행 전(km)', '주행 후(km)', '주행거리(km)', '출·퇴근(km)', '일반업무(km)', '비고'].map(h => '<th>' + h + '</th>').join('') +
+      '</tr></thead><tbody>' +
+      report.tax.map(r => '<tr>' + r.map(c => '<td>' + esc(c) + '</td>').join('') + '</tr>').join('') +
+      '</tbody></table></div></section>';
+  }
+
+  html += '<section><ul class="notes">' + (report.notes || []).map(n => '<li>' + esc(n) + '</li>').join('') + '</ul>' +
+    '<div class="notes">확인 코드 <span class="check">' + esc(report.check) + '</span></div></section>' +
+    '<div class="actions"><button onclick="window.print()">인쇄 / PDF 저장</button>' +
+    '<button onclick="navigator.share ? navigator.share({title: document.title, url: location.href}) : navigator.clipboard.writeText(location.href)">공유</button></div>';
+
+  app.innerHTML = html;
+  document.title = '차곡 · ' + report.title;
+  if (route) showRoute(route);
+})();
+
+// ---------------- route ----------------
+
+// Optional layers, off until the reader turns them on. Overspeed is always shown.
+const LAYERS = {
+  accel: { label: '급가속', color: '#ea580c', on: false, ring: true },
+  brake: { label: '급감속', color: '#be123c', on: false, ring: true },
+  dwell: { label: '1분 이상 정차', color: '#0891b2', on: false, ring: true },
+};
+function layerOf(m) {
+  if (m.kind === 'dwell') return 'dwell';
+  if (m.kind === 'event') return m.code === 'Q' || m.code === 'A' ? 'accel' : m.code === 'B' || m.code === 'S' ? 'brake' : null;
+  return null;
+}
+function visible(m) { const l = layerOf(m); return !l || LAYERS[l].on; }
+let onLayersChanged = () => {};
+function setupLayerButtons() {
+  document.querySelectorAll('.layers button').forEach(b => {
+    const l = LAYERS[b.dataset.layer];
+    const paint = () => {
+      b.classList.toggle('on', l.on);
+      const i = b.querySelector('i'), c = l.on ? l.color : '#d1d5db';
+      if (l.ring) { i.style.background = 'transparent'; i.style.boxShadow = 'inset 0 0 0 3px ' + c; } else i.style.background = c;
+    };
+    paint();
+    b.addEventListener('click', () => { l.on = !l.on; paint(); onLayersChanged(); });
+  });
+}
+
+const EVENT = {
+  Q: ['급출발', '#ea580c', '최고 가속'], A: ['급가속', '#ea580c', '최고 가속'],
+  B: ['급감속', '#be123c', '최고 감속'], S: ['급정지', '#be123c', '최고 감속'],
+  O: ['과속', '#7c3aed', null], I: ['장시간 정차', '#2563eb', null],
+};
+
+// Compact logbook rows from the app (Report.compactTax) back to the printed cells ③~⑩.
+function decodeTax(tx) {
+  const f = t => t == null ? '' : (t < 0 ? '-' : '') + Math.floor(Math.abs(t) / 10) + '.' + (Math.abs(t) % 10);
+  const two = n => (n < 10 ? '0' : '') + n;
+  let day = 0, prevEnd = null;
+  return (tx.r || []).map(([d, u, s, e, k, p, n]) => {
+    day += d;
+    const start = s === -1 ? prevEnd : s;
+    const end = e === -1 ? start + k : e;
+    const dt = new Date(day * 86400000); // a calendar date: read it in UTC so the phone's time zone cannot shift it
+    const date = dt.getUTCFullYear() + '.' + two(dt.getUTCMonth() + 1) + '.' + two(dt.getUTCDate()) + '(' + '일월화수목금토'[dt.getUTCDay()] + ')';
+    const dist = f(k);
+    prevEnd = end;
+    return [date, u === 0 ? tx.u : u, f(start), f(end), dist, p === 1 ? dist : '', p === 2 ? dist : '', n];
+  });
+}
+
+function decodeRoute(r) {
+  const la0 = r.b[0], lo0 = r.b[1];
+  let t = r.t0, la = la0, lo = lo0;
+  const points = (r.p || []).map(p => {
+    t += p[0] * 1000; la += p[1]; lo += p[2];
+    return { kind: 'point', t, lat: la / 1e5, lon: lo / 1e5, speed: p[3] < 0 ? null : p[3], limit: p[4] < 0 ? null : p[4] };
+  });
+  const events = (r.e || []).map(e => ({
+    kind: 'event', code: e[1], t: r.t0 + e[0] * 1000, lat: (la0 + e[2]) / 1e5, lon: (lo0 + e[3]) / 1e5,
+    speed: e[4] < 0 ? null : e[4], limit: e[5] < 0 ? null : e[5], peak: e[6] < 0 ? null : e[6] / 10, len: e[7] < 0 ? null : e[7],
+  }));
+  const dwells = (r.d || []).map(d => ({
+    kind: 'dwell', t: r.t0 + d[0] * 1000, len: d[1], lat: (la0 + d[2]) / 1e5, lon: (lo0 + d[3]) / 1e5, speed: 0, limit: null,
+  }));
+  return { iv: r.iv || 60, points, events, dwells, all: [...points, ...dwells, ...events] };
+}
+
+// Accel, brake and 1-minute stops are hollow rings; overspeed and route points are filled.
+function isRing(m) { return m.kind === 'dwell' || (m.kind === 'event' && m.code !== 'O'); }
+function colorOf(m) { return m.kind === 'event' ? EVENT[m.code][1] : m.kind === 'dwell' ? '#0891b2' : '#ffffff'; }
+function pad2(n) { return String(n).padStart(2, '0'); }
+function when(t) { const d = new Date(t); return (d.getMonth() + 1) + '.' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()); }
+
+function showInfo(m, address) {
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const title = m.kind === 'event' ? EVENT[m.code][0] : m.kind === 'dwell' ? '1분 이상 정차' : '경로 지점';
+  const rows = [
+    [m.code === 'O' ? '과속 시작' : '시각', when(m.t)],
+    ...(address ? [['주소', address]] : []),
+    [m.code === 'O' ? '최고 속도 (이 지점)' : '속도', m.speed != null ? m.speed + ' km/h' : '-'],
+    ['제한속도', m.limit != null ? m.limit + ' km/h' : '정보 없음'],
+  ];
+  if (m.kind === 'event' && m.peak != null && EVENT[m.code][2]) rows.push([EVENT[m.code][2], m.peak.toFixed(1) + ' km/h/s']);
+  if (m.kind === 'event' && m.len != null) rows.push([m.code === 'O' ? '과속 지속' : '이어진 시간', m.len < 1 ? '1초 미만' : m.len + '초']);
+  if (m.kind === 'dwell') rows.push(['정차 시간', Math.floor(m.len / 60) + '분 ' + (m.len % 60) + '초']);
+  document.getElementById('info').innerHTML = '<h2>' + esc(title) + '</h2>' +
+    rows.map(([k, v]) => '<div class="row"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>').join('') +
+    '<div class="rvmsg" id="rvmsg"></div>';
+}
+
+function showRoute(route) {
+  setupLayerButtons();
+  if (!KAKAO_JS_KEY || KAKAO_JS_KEY.startsWith('YOUR_')) return drawFallback(route, '지도 키가 설정되지 않아 간단한 그림으로 보여요.');
+  const sdk = document.createElement('script');
+  sdk.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(KAKAO_JS_KEY) + '&autoload=false&libraries=services';
+  sdk.onload = () => { try { kakao.maps.load(() => drawKakao(route)); } catch (e) { drawFallback(route, '지도를 불러오지 못해 간단한 그림으로 보여요.'); } };
+  sdk.onerror = () => drawFallback(route, '지도를 불러오지 못해 간단한 그림으로 보여요. (인터넷 연결 또는 지도 키 확인)');
+  document.head.appendChild(sdk);
+}
+
+function drawKakao(route) {
+  const K = kakao.maps;
+  const el = document.getElementById('map');
+  const map = new K.Map(el, { center: new K.LatLng(route.all[0].lat, route.all[0].lon), level: 5 });
+  const bounds = new K.LatLngBounds();
+  route.all.forEach(m => bounds.extend(new K.LatLng(m.lat, m.lon)));
+  map.setBounds(bounds);
+  // One spot only (very short trip): do not zoom in further than street level.
+  if (map.getLevel() < 3) map.setLevel(3);
+  if (map.getLevel() < 3) map.setLevel(3); // short trips: do not zoom in past street level
+  if (route.points.length > 1) {
+    new K.Polyline({ map, path: route.points.map(p => new K.LatLng(p.lat, p.lon)), strokeWeight: 11, strokeColor: '#475569', strokeOpacity: 0.9 });
+  }
+  const geocoder = new K.services.Geocoder();
+  const rvClient = new K.RoadviewClient();
+  const rvEl = document.getElementById('rv');
+  let roadview = null;
+  // Selected place: a downward triangle whose tip sits on the centre of the road.
+  const tri = document.createElement('div');
+  tri.style.cssText = 'width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;' +
+    'border-top:20px solid #111827;filter:drop-shadow(0 0 1px #fff);pointer-events:none';
+  const selMark = new K.CustomOverlay({ content: tri, xAnchor: 0.5, yAnchor: 1, zIndex: 10 });
+
+  function select(m) {
+    selMark.setPosition(new K.LatLng(m.lat, m.lon));
+    selMark.setMap(map);
+    showInfo(m);
+    geocoder.coord2Address(m.lon, m.lat, (res, status) => {
+      if (status === K.services.Status.OK && res[0]) {
+        const a = res[0].road_address ? res[0].road_address.address_name : res[0].address.address_name;
+        showInfo(m, a);
+      }
+    });
+    const pos = new K.LatLng(m.lat, m.lon);
+    rvClient.getNearestPanoId(pos, 50, panoId => {
+      const msg = document.getElementById('rvmsg');
+      if (panoId === null) { rvEl.style.display = 'none'; if (msg) msg.textContent = '이 근처(50m)에는 로드뷰 사진이 없어요.'; return; }
+      rvEl.style.display = 'block';
+      if (!roadview) roadview = new K.Roadview(rvEl);
+      roadview.setPanoId(panoId, pos);
+      if (msg) msg.textContent = '아래는 이 지점 근처의 로드뷰 사진이에요 (촬영 시점은 운행 시점과 다릅니다).';
+    });
+  }
+
+  // Dots: white every minute; stops and events on top (optional layers start hidden).
+  const overlays = [...route.points, ...route.dwells, ...route.events].map(m => {
+    const dot = document.createElement('div');
+    dot.className = 'dot' + (m.kind === 'point' ? ' min' : isRing(m) ? ' ring' + (m.kind === 'dwell' ? ' stop' : '') : '');
+    if (isRing(m)) dot.style.borderColor = colorOf(m);
+    else if (m.kind !== 'point') dot.style.background = colorOf(m);
+    dot.title = when(m.t);
+    dot.addEventListener('click', e => { e.stopPropagation(); select(m); });
+    const ov = new K.CustomOverlay({ position: new K.LatLng(m.lat, m.lon), content: dot, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: m.kind === 'event' ? 3 : m.kind === 'dwell' ? 2 : 1 });
+    return { m, ov };
+  });
+  const apply = () => overlays.forEach(({ m, ov }) => ov.setMap(visible(m) ? map : null));
+  onLayersChanged = apply; apply();
+
+  // Tapping the line picks the nearest recorded point.
+  K.event.addListener(map, 'click', e => {
+    const proj = map.getProjection(), tap = proj.containerPointFromCoords(e.latLng);
+    let best = null, bestD = 40;
+    route.all.filter(visible).forEach(m => {
+      const p = proj.containerPointFromCoords(new K.LatLng(m.lat, m.lon));
+      const d = Math.hypot(p.x - tap.x, p.y - tap.y);
+      if (d < bestD) { bestD = d; best = m; }
+    });
+    if (best) select(best);
+  });
+}
+
+/** No map key / offline: the same marks on a plain drawing, tappable, without address or road view. */
+function drawFallback(route, message) {
+  const el = document.getElementById('map');
+  el.id = 'mapfb';
+  const W = 1000, H = 600, P = 40;
+  const lats = route.all.map(m => m.lat), lons = route.all.map(m => m.lon);
+  const minLa = Math.min(...lats), maxLa = Math.max(...lats), minLo = Math.min(...lons), maxLo = Math.max(...lons);
+  const k = Math.cos((minLa + maxLa) / 2 * Math.PI / 180);
+  // Short trips: at least ~400 m around the route.
+  const sx = Math.max((maxLo - minLo) * k, 0.0036), sy = Math.max(maxLa - minLa, 0.0036);
+  const sc = Math.min((W - 2 * P) / sx, (H - 2 * P) / sy);
+  const cx = (minLo + maxLo) / 2, cy = (minLa + maxLa) / 2;
+  const X = lon => W / 2 + (lon - cx) * k * sc, Y = lat => H / 2 - (lat - cy) * sc;
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
+  if (route.points.length > 1) svg += '<polyline fill="none" stroke="#475569" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" points="' +
+    route.points.map(p => X(p.lon).toFixed(1) + ',' + Y(p.lat).toFixed(1)).join(' ') + '"/>';
+  const items = [...route.points, ...route.dwells, ...route.events];
+  items.forEach((m, i) => {
+    const r = m.kind === 'point' ? 6 : m.kind === 'dwell' ? 22 : 13;
+    const cx = X(m.lon).toFixed(1), cy = Y(m.lat).toFixed(1);
+    if (isRing(m)) {
+      const c = colorOf(m);
+      svg += '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="#fff" stroke-width="10" data-halo="' + i + '"/>';
+      svg += '<circle data-i="' + i + '" data-stroke="' + c + '" cx="' + cx + '" cy="' + cy + '" r="' + r +
+        '" fill="transparent" stroke="' + c + '" stroke-width="6" style="cursor:pointer"/>';
+      return;
+    }
+    const stroke = m.kind === 'point' ? 'none' : '#fff';
+    svg += '<circle data-i="' + i + '" data-stroke="' + stroke + '" cx="' + cx + '" cy="' + cy + '" r="' + r +
+      '" fill="' + colorOf(m) + '" stroke="' + stroke + '" stroke-width="4" style="cursor:pointer"/>';
+  });
+  svg += '<polygon id="selmark" points="" fill="#111827" stroke="#fff" stroke-width="3" style="display:none;pointer-events:none"/>';
+  svg += '</svg>';
+  el.innerHTML = svg;
+  el.insertAdjacentHTML('afterend', '<p class="rvmsg">' + message + ' 점 사이는 직선이라 실제 도로와 다를 수 있어요.</p>');
+  const circles = [...el.querySelectorAll('circle[data-i]')];
+  const halos = [...el.querySelectorAll('circle[data-halo]')];
+  const mark = el.querySelector('#selmark');
+  circles.forEach(c => c.addEventListener('click', () => {
+    // downward triangle above the chosen place
+    const x = +c.getAttribute('cx'), y = +c.getAttribute('cy'); // tip on the centre of the road
+    mark.setAttribute('points', x + ',' + y + ' ' + (x - 18) + ',' + (y - 34) + ' ' + (x + 18) + ',' + (y - 34));
+    mark.style.display = '';
+    showInfo(items[+c.dataset.i]);
+  }));
+  const apply = () => {
+    circles.forEach(c => { c.style.display = visible(items[+c.dataset.i]) ? '' : 'none'; });
+    halos.forEach(h => { h.style.display = visible(items[+h.dataset.halo]) ? '' : 'none'; });
+  };
+  onLayersChanged = apply; apply();
+}
+</script>
+</body>
+</html>
