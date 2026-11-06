@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>차곡 보고서</title>
+<meta name="description" content="차곡(현대자동차그룹 차량용 앱 개발 공모전 출품작) 앱의 QR 보고서를 휴대폰에서 보여 주는 정적 페이지. 보고서 데이터는 주소의 # 뒤에만 있고 서버로 전송되지 않습니다.">
 <style>
   :root { --bg:#f3f4f6; --card:#fff; --ink:#111827; --sub:#6b7280; --accent:#0f766e; --line:#e5e7eb; --warn:#b91c1c; }
   @media (prefers-color-scheme: dark) {
@@ -68,9 +69,14 @@ const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY';
   const app = document.getElementById('app');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
+  // What this site is, on every screen (also for reviewers of the site).
+  const ABOUT = '<p class="period" style="margin-top:24px">차곡은 현대자동차그룹 차량용 앱 개발 공모전 출품작입니다. ' +
+    '이 페이지는 입력 양식이 없고, 보고서 데이터는 주소의 # 뒤에만 있어 서버로 전송되지 않습니다. ' +
+    '<a href="./">소개</a> · <a href="https://github.com/Dkgkgk622/Chagok">소스 코드</a></p>';
+
   function fail(msg) {
     app.innerHTML = '<div class="brand">차곡</div><h1>보고서를 열 수 없어요</h1><p class="error">' + esc(msg) + '</p>' +
-      '<p class="period">차 화면의 QR 코드를 휴대폰 카메라로 다시 찍어 주세요.</p>';
+      '<p class="period">차 화면의 QR 코드를 휴대폰 카메라로 다시 찍어 주세요.</p>' + ABOUT;
   }
 
   const hash = location.hash.slice(1);
@@ -130,7 +136,7 @@ const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY';
   html += '<section><ul class="notes">' + (report.notes || []).map(n => '<li>' + esc(n) + '</li>').join('') + '</ul>' +
     '<div class="notes">확인 코드 <span class="check">' + esc(report.check) + '</span></div></section>' +
     '<div class="actions"><button onclick="window.print()">인쇄 / PDF 저장</button>' +
-    '<button onclick="navigator.share ? navigator.share({title: document.title, url: location.href}) : navigator.clipboard.writeText(location.href)">공유</button></div>';
+    '<button onclick="navigator.share ? navigator.share({title: document.title, url: location.href}) : navigator.clipboard.writeText(location.href)">공유</button></div>' + ABOUT;
 
   app.innerHTML = html;
   document.title = '차곡 · ' + report.title;
