@@ -202,7 +202,29 @@ function decodeRoute(r) {
   const dwells = (r.d || []).map(d => ({
     kind: 'dwell', t: r.t0 + d[0] * 1000, len: d[1], lat: (la0 + d[2]) / 1e5, lon: (lo0 + d[3]) / 1e5, speed: 0, limit: null,
   }));
-  return { iv: r.iv || 60, points, events, dwells, all: [...points, ...dwells, ...events] };
+  // The road line goes through every recorded place in time order, not only the 1-minute points,
+  // so event and stop marks sit on it (they are real positions between two minute points).
+  const line = [...points, ...events, ...dwells].sort((a, b) => a.t - b.t);
+  return { iv: r.iv || 60, points, events, dwells, line, all: [...points, ...dwells, ...events] };
+}
+
+/**
+ * Which mark a tap means. Close to a mark: that mark. On the road line (between marks): the nearest
+ * visible mark — a recorded value, never one estimated between two records.
+ * xy: mark -> {x, y} in the same units as tap; tolerances in those units.
+ */
+function pickMark(tap, route, xy, markTol, lineTol) {
+  const vis = route.all.filter(visible);
+  let best = null, bestD = Infinity;
+  vis.forEach(m => { const p = xy(m); const d = Math.hypot(p.x - tap.x, p.y - tap.y); if (d < bestD) { bestD = d; best = m; } });
+  if (best && bestD <= markTol) return best;
+  const pts = route.line.map(xy);
+  for (let i = 1; i < pts.length; i++) {
+    const a = pts[i - 1], b = pts[i], dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy;
+    const u = len2 ? Math.max(0, Math.min(1, ((tap.x - a.x) * dx + (tap.y - a.y) * dy) / len2)) : 0;
+    if (Math.hypot(a.x + u * dx - tap.x, a.y + u * dy - tap.y) <= lineTol) return best;
+  }
+  return null;
 }
 
 // Accel, brake and 1-minute stops are hollow rings; overspeed and route points are filled.
@@ -245,11 +267,9 @@ function drawKakao(route) {
   const bounds = new K.LatLngBounds();
   route.all.forEach(m => bounds.extend(new K.LatLng(m.lat, m.lon)));
   map.setBounds(bounds);
-  // One spot only (very short trip): do not zoom in further than street level.
-  if (map.getLevel() < 3) map.setLevel(3);
-  if (map.getLevel() < 3) map.setLevel(3); // short trips: do not zoom in past street level
-  if (route.points.length > 1) {
-    new K.Polyline({ map, path: route.points.map(p => new K.LatLng(p.lat, p.lon)), strokeWeight: 11, strokeColor: '#475569', strokeOpacity: 0.9 });
+  if (map.getLevel() < 3) map.setLevel(3); // one spot only (very short trip): do not zoom in past street level
+  if (route.line.length > 1) {
+    new K.Polyline({ map, path: route.line.map(p => new K.LatLng(p.lat, p.lon)), strokeWeight: 11, strokeColor: '#475569', strokeOpacity: 0.9 });
   }
   const geocoder = new K.services.Geocoder();
   const rvClient = new K.RoadviewClient();
@@ -296,15 +316,10 @@ function drawKakao(route) {
   const apply = () => overlays.forEach(({ m, ov }) => ov.setMap(visible(m) ? map : null));
   onLayersChanged = apply; apply();
 
-  // Tapping the line picks the nearest recorded point.
+  // Tapping the road line anywhere picks the nearest recorded place.
   K.event.addListener(map, 'click', e => {
     const proj = map.getProjection(), tap = proj.containerPointFromCoords(e.latLng);
-    let best = null, bestD = 40;
-    route.all.filter(visible).forEach(m => {
-      const p = proj.containerPointFromCoords(new K.LatLng(m.lat, m.lon));
-      const d = Math.hypot(p.x - tap.x, p.y - tap.y);
-      if (d < bestD) { bestD = d; best = m; }
-    });
+    const best = pickMark(tap, route, m => proj.containerPointFromCoords(new K.LatLng(m.lat, m.lon)), 40, 24);
     if (best) select(best);
   });
 }
@@ -323,8 +338,8 @@ function drawFallback(route, message) {
   const cx = (minLo + maxLo) / 2, cy = (minLa + maxLa) / 2;
   const X = lon => W / 2 + (lon - cx) * k * sc, Y = lat => H / 2 - (lat - cy) * sc;
   let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
-  if (route.points.length > 1) svg += '<polyline fill="none" stroke="#475569" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" points="' +
-    route.points.map(p => X(p.lon).toFixed(1) + ',' + Y(p.lat).toFixed(1)).join(' ') + '"/>';
+  if (route.line.length > 1) svg += '<polyline fill="none" stroke="#475569" stroke-width="16" stroke-linecap="round" stroke-linejoin="round" points="' +
+    route.line.map(p => X(p.lon).toFixed(1) + ',' + Y(p.lat).toFixed(1)).join(' ') + '"/>';
   const items = [...route.points, ...route.dwells, ...route.events];
   items.forEach((m, i) => {
     const r = m.kind === 'point' ? 6 : m.kind === 'dwell' ? 22 : 13;
@@ -347,13 +362,23 @@ function drawFallback(route, message) {
   const circles = [...el.querySelectorAll('circle[data-i]')];
   const halos = [...el.querySelectorAll('circle[data-halo]')];
   const mark = el.querySelector('#selmark');
-  circles.forEach(c => c.addEventListener('click', () => {
-    // downward triangle above the chosen place
-    const x = +c.getAttribute('cx'), y = +c.getAttribute('cy'); // tip on the centre of the road
+  const choose = i => {
+    // downward triangle above the chosen place, tip on the centre of the road
+    const m = items[i], x = X(m.lon), y = Y(m.lat);
     mark.setAttribute('points', x + ',' + y + ' ' + (x - 18) + ',' + (y - 34) + ' ' + (x + 18) + ',' + (y - 34));
     mark.style.display = '';
-    showInfo(items[+c.dataset.i]);
-  }));
+    showInfo(m);
+  };
+  circles.forEach(c => c.addEventListener('click', e => { e.stopPropagation(); choose(+c.dataset.i); }));
+  // Tapping the road line anywhere picks the nearest recorded place (tolerances: ~16 px / ~24 px on screen).
+  const svgEl = el.querySelector('svg');
+  svgEl.addEventListener('click', e => {
+    const pt = svgEl.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY;
+    const tap = pt.matrixTransform(svgEl.getScreenCTM().inverse());
+    const perPx = W / svgEl.getBoundingClientRect().width;
+    const best = pickMark(tap, route, m => ({ x: X(m.lon), y: Y(m.lat) }), 24 * perPx, 16 * perPx);
+    if (best) choose(items.indexOf(best));
+  });
   const apply = () => {
     circles.forEach(c => { c.style.display = visible(items[+c.dataset.i]) ? '' : 'none'; });
     halos.forEach(h => { h.style.display = visible(items[+h.dataset.halo]) ? '' : 'none'; });
