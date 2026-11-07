@@ -154,6 +154,9 @@ object RouteModel {
         val maxX = marks.maxOfOrNull { x(it.lon) } ?: 0.0
         val minY = marks.minOfOrNull { y(it.lat) } ?: 0.0
         val maxY = marks.maxOfOrNull { y(it.lat) } ?: 0.0
+        /** The road line (track points in time order) in Ground metres. */
+        val line: List<Pair<Double, Double>> = marks.filter { it.kind == RouteMark.Kind.POINT || it.kind == RouteMark.Kind.MINUTE }
+            .sortedBy { it.timeMs }.map { x(it.lon) to y(it.lat) }
         /** Typical metres per minute while moving (median, >= 3 km/h), from the 1-minute dots. Null if not moving. */
         val perMinM: Double? = marks.filter { it.kind == RouteMark.Kind.MINUTE }.zipWithNext().mapNotNull { (a, b) ->
             val min = (b.timeMs - a.timeMs) / 60_000.0
@@ -170,6 +173,28 @@ object RouteModel {
             return copy(mpp = m, cx = gx - (px - w / 2) * m, cy = gy + (py - h / 2) * m)
         }
         fun pan(dx: Float, dy: Float) = copy(cx = cx - dx * mpp, cy = cy + dy * mpp)
+
+        /**
+         * Never lose the road: if no part of [line] (Ground metres, in order) is within [keepPx] of the edges
+         * of a [w] x [h] map, slide just enough that the nearest part of it is back inside. Same rule as keepRoute
+         * in docs/report.html.
+         */
+        fun keepRoute(line: List<Pair<Double, Double>>, w: Float, h: Float, keepPx: Float = 60f): View {
+            if (line.isEmpty()) return this
+            var best = line[0]; var bestD = Double.MAX_VALUE
+            for (i in line.indices) {
+                val p = if (i == 0) line[0] else {
+                    val (ax, ay) = line[i - 1]; val (bx, by) = line[i]
+                    val dx = bx - ax; val dy = by - ay; val l = dx * dx + dy * dy
+                    val u = if (l > 0) (((cx - ax) * dx + (cy - ay) * dy) / l).coerceIn(0.0, 1.0) else 0.0
+                    (ax + u * dx) to (ay + u * dy)
+                }
+                val d = kotlin.math.hypot(p.first - cx, p.second - cy)
+                if (d < bestD) { bestD = d; best = p }
+            }
+            val hx = maxOf(0f, w / 2 - keepPx) * mpp; val hy = maxOf(0f, h / 2 - keepPx) * mpp
+            return copy(cx = cx.coerceIn(best.first - hx, best.first + hx), cy = cy.coerceIn(best.second - hy, best.second + hy))
+        }
     }
 
     /** About this many 1-minute dots across the screen on a straight road (same rule as the phone page). */

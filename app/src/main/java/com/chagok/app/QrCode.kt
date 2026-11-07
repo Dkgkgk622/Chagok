@@ -10,13 +10,20 @@ import com.google.zxing.qrcode.QRCodeWriter
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel
 
 object QrCode {
-    /** Returns null when the text is too long for a QR code. */
-    fun render(text: String, sizePx: Int = 720): ImageBitmap? = try {
+    /** Quiet zone in modules. 4 is the QR standard; phone cameras miss codes with less on a busy screen. */
+    const val QUIET_ZONE = 4
+
+    /**
+     * One pixel per module (plus the quiet zone). Draw it scaled by a whole number with no filtering
+     * (QrImage in MainActivity): scaling a pre-rendered bitmap by a fraction blurs module edges, and a
+     * blurred 141-module code is what phone cameras failed to read. Null when the text is too long.
+     */
+    fun render(text: String): ImageBitmap? = try {
         val hints = mapOf(
             EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.L,
-            EncodeHintType.MARGIN to 2,
+            EncodeHintType.MARGIN to QUIET_ZONE,
         )
-        val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, sizePx, sizePx, hints)
+        val matrix = QRCodeWriter().encode(text, BarcodeFormat.QR_CODE, 0, 0, hints)
         val pixels = IntArray(matrix.width * matrix.height) { i ->
             if (matrix.get(i % matrix.width, i / matrix.width)) Color.BLACK else Color.WHITE
         }

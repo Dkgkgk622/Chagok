@@ -5,60 +5,57 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>차곡 운행 보고서</title>
 <meta name="description" content="차곡 앱(차량용 앱 개발 공모전 출품작)이 만든 운행 보고서를 읽기 전용으로 보여 주는 정적 페이지입니다. 입력 양식이나 로그인이 없습니다.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-  /* Reading-room look: warm paper canvas, warm grays, serif headings, pill buttons, square cards.
-     Chromatic colour only where it carries data (map events, layers). */
-  :root { --canvas:#f7f4ed; --paper:#fff; --ink:#242424; --body:#333; --btn:#191919; --sub:#6b6b6b; --line:#e9e4d9;
-          --serif:"Noto Serif KR", "Noto Serif CJK KR", "AppleMyungjo", "Batang", Georgia, serif;
-          --sans:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; }
+  /* Modern and square: warm paper canvas, near-black ink, heavy sans headings, no rounded corners
+     except the round map dots. Chromatic colour only where it carries data (map events, layers). */
+  :root { --canvas:#f7f4ed; --paper:#fff; --ink:#111; --body:#1f1f1f; --btn:#111; --sub:#555; --line:#e4dfd3;
+          --sans:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--canvas); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.55;  word-break:keep-all; overflow-wrap:anywhere;}
-  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 56px; }
-  a { color: var(--ink); text-underline-offset: 3px; }
-  .brand { color: var(--ink); font-size: 15px; letter-spacing: .01em; }
-  h1 { font-family: var(--serif); font-weight: 400; color: var(--ink); font-size: clamp(32px, 7vw, 48px); line-height: 1.12; letter-spacing: -0.02em; margin: 18px 0 10px; }
-  .period { color: var(--sub); font-size: 15px; }
-  section { background: var(--paper); padding: 20px 16px; margin-top: 16px; }
-  h2 { font-family: var(--serif); font-weight: 600; color: var(--ink); font-size: 19px; margin: 0 0 10px; }
-  .row { display:flex; justify-content:space-between; gap:12px; padding:9px 0; border-top:1px solid var(--line); font-size:15px; }
+  body { margin:0; background:var(--canvas); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.55; word-break:keep-all; overflow-wrap:anywhere; -webkit-font-smoothing:antialiased; }
+  main { max-width: 760px; margin: 0 auto; padding: 28px 16px 56px; }
+  a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
+  .brand { color: var(--ink); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+  h1 { color: var(--ink); font-weight: 800; font-size: clamp(30px, 7vw, 44px); line-height: 1.1; letter-spacing: -0.035em; margin: 20px 0 8px; }
+  .period { color: var(--sub); font-size: 15px; font-weight: 500; }
+  section { background: var(--paper); padding: 20px 18px; margin-top: 16px; border-top: 3px solid var(--ink); }
+  h2 { color: var(--ink); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; margin: 0 0 12px; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid var(--line); font-size:15px; }
   .row:first-of-type { border-top:none; }
-  .row span:first-child { color: var(--sub); }
-  .row span:last-child { color: var(--ink); font-weight: 600; text-align: right; }
+  .row span:first-child { color: var(--sub); font-weight: 500; }
+  .row span:last-child { color: var(--ink); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
   .table-wrap { overflow-x: auto; }
   table { width:100%; border-collapse: collapse; font-size: 13px; min-width: 760px; font-variant-numeric: tabular-nums; }
-  th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+  th, td { padding: 9px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
   th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:last-child, td:last-child { text-align: left; }
-  th { color: var(--sub); font-weight: 400; }
+  th { color: var(--ink); font-weight: 700; border-bottom: 2px solid var(--ink); }
   .notes { color: var(--sub); font-size: 13px; }
   .notes li { margin: 4px 0; }
   .actions { display:flex; gap:8px; margin-top:20px; }
   button { font-family: var(--sans); }
-  .actions button { border:0; border-radius:9999px; padding: 10px 20px; font-size: 15px; background: var(--btn); color: #fff; cursor:pointer; }
-  .about { color: var(--sub); font-size: 13px; margin-top: 40px; }
+  .actions button { flex:1; border:0; border-radius:0; padding: 14px 20px; font-size: 15px; font-weight: 700; background: var(--btn); color: #fff; cursor:pointer; }
+  .about { color: var(--sub); font-size: 13px; margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--line); }
   #map, #mapfb { width:100%; height:420px; background:#ece7dc; overflow:hidden; position:relative; }
   #mapfb svg { width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
   .mapwrap { position:relative; }
-  .viewbtn { position:absolute; top:10px; right:10px; z-index:5; border:0; border-radius:9999px; background:var(--btn); color:#fff; padding:7px 14px; font-size:13px; cursor:pointer; }
-  .legend { display:flex; flex-wrap:wrap; gap:10px 14px; font-size:13px; color:var(--sub); margin:0 0 10px; }
+  .viewbtn { position:absolute; top:10px; right:10px; z-index:5; border:0; border-radius:0; background:var(--btn); color:#fff; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; }
+  .legend { display:flex; flex-wrap:wrap; gap:10px 14px; font-size:13px; font-weight:500; color:var(--sub); margin:0 0 10px; }
   .legend i { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:5px; vertical-align:-1px; }
   .dot { position:relative; width:22px; height:22px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.25); cursor:pointer; }
 
   .dot.ring { width:22px; height:22px; background:transparent !important; border:5px solid #0891b2; box-shadow:0 0 0 2px #fff, inset 0 0 0 2px #fff; }
   .dot.ring.stop { width:36px; height:36px; } /* 1-minute stop: bigger, an event at the same spot shows inside */
   .dot.min { width:10px; height:10px; border:0; background:#fff; box-shadow:0 0 0 2px #4a4640; }
-  .layers { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 12px; }
-  .layers button { border:1px solid var(--line); border-radius:9999px; background:var(--paper); color:var(--ink); padding:7px 14px; font-size:14px; cursor:pointer; }
-  .layers button.on { background:var(--btn); border-color:var(--btn); color:#fff; }
+  .layers { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
+  .layers button { border:1.5px solid var(--ink); border-radius:0; background:var(--paper); color:var(--ink); padding:7px 12px; font-size:14px; font-weight:600; cursor:pointer; }
+  .layers button.on { background:var(--btn); color:#fff; }
   .layers button i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#d6d0c4; }
   #info { margin-top:12px; }
   #info .hint { color:var(--sub); font-size:14px; }
   section > .hint { color:var(--sub); font-size:14px; margin:0 0 8px; }
   #rv { width:100%; height:240px; margin-top:10px; display:none; }
   .rvmsg { color:var(--sub); font-size:13px; margin-top:8px; }
-  @media print { .actions, .layers { display:none; } body, section { background:#fff; } section { border:1px solid #ddd; } }
+  @media print { .actions, .layers, .viewbtn { display:none; } body, section { background:#fff; } }
 </style>
 </head>
 <body>
@@ -317,19 +314,44 @@ function firstView(route, g, W, H, P, whole) {
   return { cx: c.x, cy: c.y, mpp: capMpp, partial: true, fitMpp };
 }
 
+/**
+ * Never lose the road: if no part of the route line is within KEEP px of the map edges, slide the view
+ * just enough that the nearest part of the line is back inside. Same rule as RouteModel.View.keepRoute (car screen).
+ */
+const KEEP = 60;
+function keepRoute(route, v, W, H) {
+  const pts = route.line;
+  if (!pts.length) return v;
+  let best = null, bestD = Infinity;
+  const near = (ax, ay, bx, by) => {
+    const dx = bx - ax, dy = by - ay, L = dx * dx + dy * dy;
+    const u = L ? Math.max(0, Math.min(1, ((v.cx - ax) * dx + (v.cy - ay) * dy) / L)) : 0;
+    return { x: ax + u * dx, y: ay + u * dy };
+  };
+  for (let i = 0; i < pts.length; i++) {
+    const p = i ? near(pts[i - 1].x, pts[i - 1].y, pts[i].x, pts[i].y) : { x: pts[0].x, y: pts[0].y };
+    const d = Math.hypot(p.x - v.cx, p.y - v.cy);
+    if (d < bestD) { bestD = d; best = p; }
+  }
+  const hx = Math.max(0, W / 2 - KEEP) * v.mpp, hy = Math.max(0, H / 2 - KEEP) * v.mpp;
+  return { ...v, cx: Math.min(Math.max(v.cx, best.x - hx), best.x + hx), cy: Math.min(Math.max(v.cy, best.y - hy), best.y + hy) };
+}
+
 function setViewUi(partial, onToggle) {
   const btn = document.getElementById('viewbtn'), hint = document.getElementById('viewhint');
   if (!btn) return;
   btn.style.display = '';
   btn.textContent = partial ? '전체 보기' : '처음 부분 보기';
   btn.onclick = onToggle;
-  hint.textContent = partial ? '경로가 길어 처음 부분부터 보여요. 끌어서 옮기고, 두 손가락으로 확대·축소할 수 있어요.' : '';
+  hint.textContent = partial ? '경로가 길어 처음 부분부터 보여요. 끌어서 옮기고, 두 손가락(PC는 Ctrl+휠)으로 확대·축소할 수 있어요.' : '';
 }
 
 function drawKakao(route) {
   const K = kakao.maps;
   const el = document.getElementById('map');
-  const map = new K.Map(el, { center: new K.LatLng(route.all[0].lat, route.all[0].lon), level: 5 });
+  // Wheel scrolls the page, not the map (the map is one block in a long report); zoom with pinch or the +/- control.
+  const map = new K.Map(el, { center: new K.LatLng(route.all[0].lat, route.all[0].lon), level: 5, scrollwheel: false });
+  map.addControl(new K.ZoomControl(), K.ControlPosition.RIGHT);
   const g = measure(route);
   const toLL = (x, y) => new K.LatLng(g.lat0 + y / M_PER_DEG, g.lon0 + x / (M_PER_DEG * g.k));
   const W = el.clientWidth, H = el.clientHeight, P = 24;
@@ -426,6 +448,7 @@ function drawFallback(route, message) {
   const X = m => W / 2 + (m.x - v.cx) / v.mpp, Y = m => H / 2 - (m.y - v.cy) / v.mpp;
 
   function render() {
+    v = keepRoute(route, v, W, H);
     let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
     if (route.line.length > 1) svg += '<polyline fill="none" stroke="#4a4640" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" points="' +
       route.line.map(p => X(p).toFixed(1) + ',' + Y(p).toFixed(1)).join(' ') + '"/>';
@@ -506,7 +529,11 @@ function drawFallback(route, message) {
   };
   el.addEventListener('pointerup', up);
   el.addEventListener('pointercancel', e => { ptrs.delete(e.pointerId); });
-  el.addEventListener('wheel', e => { e.preventDefault(); const p = local(e); zoomAt(p.x, p.y, Math.exp(e.deltaY * 0.0015)); render(); }, { passive: false });
+  // Plain wheel scrolls the page as usual; Ctrl+wheel (and trackpad pinch, which arrives as Ctrl+wheel) zooms the map.
+  el.addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault(); const p = local(e); zoomAt(p.x, p.y, Math.exp(e.deltaY * 0.004)); render();
+  }, { passive: false });
   window.addEventListener('resize', () => { W = el.clientWidth || W; H = el.clientHeight || H; render(); });
 
   onLayersChanged = render;

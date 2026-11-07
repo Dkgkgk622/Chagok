@@ -954,6 +954,14 @@ fun main() {
         val dxBefore = before.x(m.lon) - 300f; val dxAfter = after.x(m.lon) - 300f
         check("확대: 손가락 아래 지점 고정, 다른 점은 2배 멀어짐", kotlin.math.abs(dxAfter - 2 * dxBefore) < 0.5f) { "$dxBefore $dxAfter" }
         val panned = RouteModel.Projection(gL, vLong.pan(40f, -30f), w, h)
+        val lost = vLong.pan(5000f, 0f).keepRoute(gL.line, w, h)
+        val pLost = RouteModel.Projection(gL, lost, w, h)
+        val onScreen = marksL.filter { it.kind != RouteMark.Kind.EVENT }.zipWithNext().any { (a, b) ->
+            (0..20).any { i -> val u = i / 20.0
+                val x = pLost.x(a.lon + u * (b.lon - a.lon)); val y = pLost.y(a.lat + u * (b.lat - a.lat))
+                x in 59f..w - 59f && y in 59f..h - 59f } }
+        check("멀리 끌어도 길의 일부는 화면 안 (가장자리 60px 안쪽)", onScreen)
+        check("길이 이미 보이면 끌기를 막지 않음", vLong.pan(40f, -30f).keepRoute(gL.line, w, h) == vLong.pan(40f, -30f))
         check("끌기: 지도가 손가락만큼 이동", kotlin.math.abs(panned.x(m.lon) - before.x(m.lon) - 40f) < 0.01f &&
             kotlin.math.abs(panned.y(m.lat) - before.y(m.lat) + 30f) < 0.01f)
     }

@@ -25,7 +25,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.material3.MaterialTheme
@@ -41,7 +40,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -52,6 +54,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -144,19 +147,19 @@ private fun readableTypography(): androidx.compose.material3.Typography {
 }
 
 /**
- * Same warm reading-room palette as the phone page (docs/report.html): paper canvas, warm grays,
+ * Same look as the phone page (docs/report.html): warm paper canvas, near-black ink, square shapes,
  * near-black as the only button colour. Red/green/amber stay only where they mean something
  * (recording, warning lamps, missing logbook data) and event colours only on the map.
  */
 private object Palette {
     val bg = Color(0xFFF7F4ED)        // paper canvas
     val card = Color.White
-    val ink = Color(0xFF242424)
-    val sub = Color(0xFF6B6B6B)
-    val accent = Color(0xFF191919)    // buttons, selected chips, emphasised text
+    val ink = Color(0xFF111111)
+    val sub = Color(0xFF555555)
+    val accent = Color(0xFF111111)    // buttons, selected chips, emphasised text
     val accentSoft = Color(0xFFECE7DC) // unselected chips, soft buttons
-    val btn = Color(0xFF191919)
-    val line = Color(0xFFE9E4D9)
+    val btn = Color(0xFF111111)
+    val line = Color(0xFFE4DFD3)
     val inset = Color(0xFFFAF8F3)     // box inside a card
     val offFill = Color(0xFFF1EDE4)   // layer toggle when off
     val off = Color(0xFFD6D0C4)
@@ -167,8 +170,8 @@ private object Palette {
     val ok = Color(0xFF15803D)
 }
 
-/** Cards and boxes are square; buttons and chips are pills. */
-private val Pill = RoundedCornerShape(percent = 50)
+/** Everything is square (modern, matches the phone page). Kept as one name so the look can change in one place. */
+private val Pill = RectangleShape
 
 // ======================= driving =======================
 
@@ -546,11 +549,7 @@ private fun ReportsTab(book: Logbook, s: VehicleSnapshot, onProfile: (VehiclePro
         Text(report.period, fontSize = 16.sp, color = Palette.sub)
         Spacer(Modifier.height(16.dp))
         if (qr != null) {
-            // QR follows the window width (Pleos windows resize), within a readable range.
-            BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val side = (maxWidth * 0.6f).coerceIn(160.dp, 360.dp)
-                Image(bitmap = qr, contentDescription = "보고서 QR 코드", modifier = Modifier.size(side))
-            }
+            QrImage(qr, "보고서 QR 코드")
             Spacer(Modifier.height(8.dp))
             Text(
                 "휴대폰 카메라로 찍으면 이 보고서가 열려요. (데이터는 서버에 저장되지 않아요)",
@@ -609,7 +608,7 @@ private fun ReportsTab(book: Logbook, s: VehicleSnapshot, onProfile: (VehiclePro
 private fun TaxTableRow(cells: List<String>, header: Boolean = false, highlight: Boolean = false, onUserClick: (() -> Unit)? = null) {
     Row(
         Modifier.fillMaxWidth()
-            .background(if (highlight) Color(0xFFFEF3C7) else Color.Transparent, RoundedCornerShape(8.dp))
+            .background(if (highlight) Color(0xFFFEF3C7) else Color.Transparent, RectangleShape)
             .padding(vertical = 6.dp, horizontal = 4.dp)
     ) {
         cells.forEachIndexed { i, text ->
@@ -862,7 +861,8 @@ private fun RouteScreen(trip: Trip, onBack: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         BoxWithConstraints(
-            Modifier.fillMaxWidth().height(440.dp).background(Palette.mapBg)
+            // clipToBounds: a Compose Canvas draws outside its own box unless clipped (the road ran over the card above).
+            Modifier.fillMaxWidth().height(440.dp).clipToBounds().background(Palette.mapBg)
         ) {
             val w = constraints.maxWidth.toFloat()
             val h = constraints.maxHeight.toFloat()
@@ -882,6 +882,7 @@ private fun RouteScreen(trip: Trip, onBack: () -> Unit) {
                         // Drag to move, pinch to zoom (around the fingers).
                         detectTransformGestures { centroid, pan, zoom, _ ->
                             view = view.pan(pan.x, pan.y).zoomAt(centroid.x, centroid.y, w, h, 1.0 / zoom, 0.3, maxMpp)
+                                .keepRoute(ground.line, w, h)
                         }
                     }
             ) {
@@ -968,10 +969,7 @@ private fun TripReportScreen(trip: Trip, onBack: () -> Unit) {
             Spacer(Modifier.height(16.dp))
         }
         if (qr != null) {
-            BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val side = (maxWidth * 0.6f).coerceIn(160.dp, 360.dp)
-                Image(bitmap = qr, contentDescription = "운행 보고서 QR 코드", modifier = Modifier.size(side))
-            }
+            QrImage(qr, "운행 보고서 QR 코드")
             Spacer(Modifier.height(8.dp))
             Text("휴대폰 카메라로 찍으면 지도·주소·로드뷰와 함께 열려요. (데이터는 서버에 저장되지 않아요)",
                 fontSize = 16.sp, color = Palette.sub, textAlign = TextAlign.Center, modifier = Modifier.fillMaxWidth())
@@ -990,6 +988,25 @@ private fun TripReportScreen(trip: Trip, onBack: () -> Unit) {
         report.notes.forEach { Text("· $it", fontSize = 16.sp, color = Palette.sub) }
         Spacer(Modifier.height(8.dp))
         Text("보고서 번호 ${report.verificationCode()}", fontSize = 16.sp, color = Palette.sub)
+    }
+}
+
+/**
+ * QR as large as the window allows (Pleos windows resize; up to ~85% of the screen height so it fits
+ * without scrolling), each module a whole number of screen pixels and drawn without smoothing.
+ * Module size is what decides phone scanning: in a simulated camera test (verify/README.md) a full
+ * 1,800-character code read 7/16 at 4 px per module and 13-15/16 at 6-7 px.
+ */
+@Composable
+private fun QrImage(qr: ImageBitmap, description: String) {
+    BoxWithConstraints(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+        val density = LocalDensity.current
+        val screenH = LocalConfiguration.current.screenHeightDp.dp
+        val maxPx = with(density) { minOf(maxWidth * 0.95f, screenH * 0.85f).toPx() }
+        val perModule = (maxPx / qr.width).toInt().coerceAtLeast(1)
+        val side = with(density) { (qr.width * perModule).toDp() }
+        Image(bitmap = qr, contentDescription = description, filterQuality = FilterQuality.None,
+            modifier = Modifier.size(side).background(Color.White))
     }
 }
 
@@ -1050,9 +1067,11 @@ private fun MarkInfo(m: RouteMark) {
 
 @Composable
 private fun Card(content: @Composable () -> Unit) {
-    Column(
-        Modifier.fillMaxWidth().background(Palette.card, RectangleShape).padding(24.dp)
-    ) { content() }
+    // White square card with a heavy ink rule on top, like the sections of the phone page.
+    Column(Modifier.fillMaxWidth().background(Palette.card, RectangleShape)) {
+        Box(Modifier.fillMaxWidth().height(3.dp).background(Palette.ink))
+        Column(Modifier.fillMaxWidth().padding(24.dp)) { content() }
+    }
 }
 
 @Composable

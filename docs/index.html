@@ -6,59 +6,71 @@
 <meta name="google-site-verification" content="TopSiUegK7ERnjS6fgrWcu98PKGq_bdVoX9aY5E9M6k" />
 <title>차곡 (Chagok)</title>
 <meta name="description" content="차곡: 차량이 스스로 쌓는 운행 기록. 차량용 앱 개발 공모전 출품작입니다. 이 사이트는 앱이 만든 운행 보고서를 읽기 전용으로 보여 주는 정적 페이지입니다.">
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-  /* Same reading-room look as report.html: warm paper, warm grays, serif display, one pill button. */
-  :root { --canvas:#f7f4ed; --paper:#fff; --ink:#242424; --body:#333; --btn:#191919; --sub:#6b6b6b; --line:#e9e4d9;
-          --serif:"Noto Serif KR", "Noto Serif CJK KR", "AppleMyungjo", "Batang", Georgia, serif;
-          --sans:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; }
+  /* Same look as report.html: warm paper canvas, near-black ink, heavy sans, square everything. */
+  :root { --canvas:#f7f4ed; --paper:#fff; --ink:#111; --body:#1f1f1f; --btn:#111; --sub:#555; --line:#e4dfd3;
+          --sans:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--canvas); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.6;  word-break:keep-all; overflow-wrap:anywhere;}
-  a { color:var(--ink); text-underline-offset:3px; }
-  header, main, footer { max-width: 960px; margin: 0 auto; padding: 0 16px; }
-  header { display:flex; justify-content:space-between; align-items:center; height:64px; }
-  .mark { color:var(--ink); font-size:20px; text-decoration:none; }
-  nav a { font-size:14px; text-decoration:none; margin-left:24px; }
+  body { margin:0; background:var(--canvas); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.6; word-break:keep-all; overflow-wrap:anywhere; -webkit-font-smoothing:antialiased; }
+  a { color:var(--ink); }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
+  header { border-bottom: 2px solid var(--ink); }
+  header .wrap { display:flex; justify-content:space-between; align-items:center; height:60px; }
+  .mark { color:var(--ink); font-size:18px; font-weight:800; letter-spacing:-0.02em; text-decoration:none; }
+  .mark span { font-weight:500; color:var(--sub); margin-left:8px; font-size:13px; letter-spacing:.08em; }
+  nav a { font-size:14px; font-weight:600; text-decoration:none; }
   nav a:hover { text-decoration:underline; }
-  .hero { padding: 56px 0 64px; border-bottom: 1px solid var(--line); }
-  h1 { font-family:var(--serif); font-weight:400; color:var(--ink); font-size: clamp(44px, 10vw, 96px); line-height:1.04; letter-spacing:-0.035em; margin:0; }
-  .lede { color:var(--sub); font-size:20px; line-height:1.45; margin:24px 0 32px; max-width: 34em; }
-  .pill { display:inline-block; background:var(--btn); color:#fff; text-decoration:none; font-size:14px; padding:9px 20px; border-radius:9999px; }
-  .cols { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; padding:48px 0 16px; }
-  .card { background:var(--paper); padding:20px 16px; }
-  h2 { font-family:var(--serif); font-weight:600; color:var(--ink); font-size:19px; margin:0 0 8px; }
-  .card p, .card li { font-size:15px; margin:0; }
-  .card ul { margin:0; padding-left:18px; }
-  .card li + li { margin-top:4px; }
-  footer { padding: 48px 16px 40px; text-align:center; font-size:13px; color:var(--sub); }
-  footer a { color:var(--sub); margin:0 8px; }
+  .hero { padding: 72px 0 64px; }
+  .eyebrow { font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--sub); margin:0 0 20px; }
+  h1 { color:var(--ink); font-weight:800; font-size: clamp(44px, 10vw, 104px); line-height:1.02; letter-spacing:-0.05em; margin:0; }
+  .lede { color:var(--body); font-size:clamp(17px, 2.4vw, 21px); font-weight:500; line-height:1.5; margin:28px 0 36px; max-width: 32em; }
+  .btn { display:inline-block; background:var(--btn); color:#fff; text-decoration:none; font-size:15px; font-weight:700; padding:14px 24px; }
+  .btn:hover { background:#333; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); border-top:2px solid var(--ink); }
+  .cell { padding:24px 20px 28px 0; }
+  .cell + .cell { padding-left:20px; border-left:1px solid var(--line); }
+  .num { font-size:13px; font-weight:700; color:var(--sub); font-variant-numeric: tabular-nums; }
+  h2 { color:var(--ink); font-weight:800; font-size:20px; letter-spacing:-0.02em; margin:6px 0 8px; }
+  .cell p, .cell li { font-size:15px; margin:0; color:var(--body); }
+  .cell ul { margin:0; padding-left:18px; }
+  .cell li + li { margin-top:4px; }
+  code { font-size:.9em; background:var(--paper); padding:1px 5px; }
+  footer { border-top:1px solid var(--line); margin-top:48px; }
+  footer .wrap { padding-top:20px; padding-bottom:32px; display:flex; gap:20px; font-size:13px; color:var(--sub); }
+  footer a { color:var(--sub); }
+  @media (max-width: 600px) { .cell + .cell { padding-left:0; border-left:0; border-top:1px solid var(--line); } }
 </style>
 </head>
 <body>
 <header>
-  <a class="mark" href="./">차곡</a>
-  <nav><a href="https://github.com/Dkgkgk622/Chagok">소스 코드</a></nav>
+  <div class="wrap">
+    <a class="mark" href="./">차곡<span>CHAGOK</span></a>
+    <nav><a href="https://github.com/Dkgkgk622/Chagok">소스 코드</a></nav>
+  </div>
 </header>
 
-<main>
+<main class="wrap">
   <section class="hero">
+    <p class="eyebrow">차량용 앱 개발 공모전 출품작</p>
     <h1>차가 스스로<br>쌓는 운행 기록</h1>
-    <p class="lede">달리는 동안 차가 알아서 기록하고, 세워 두었을 때 주간 요약·정비용·차 이력·운행기록부로 정리합니다. 차량용 앱 개발 공모전 출품작입니다.</p>
-    <a class="pill" href="https://github.com/Dkgkgk622/Chagok">소스 코드 보기</a>
+    <p class="lede">달리는 동안 차가 알아서 기록하고, 세워 두었을 때 주간 요약·정비용·차 이력·운행기록부로 정리합니다.</p>
+    <a class="btn" href="https://github.com/Dkgkgk622/Chagok">소스 코드 보기 →</a>
   </section>
 
-  <div class="cols">
-    <div class="card">
+  <div class="grid">
+    <div class="cell">
+      <div class="num">01</div>
       <h2>이 사이트는</h2>
       <p>차곡 앱이 만든 운행 보고서를 휴대폰에서 읽을 수 있게 보여 주는 읽기 전용 페이지입니다.</p>
     </div>
-    <div class="card">
+    <div class="cell">
+      <div class="num">02</div>
       <h2>데이터는 어디에</h2>
       <p>보고서 내용은 링크 주소의 <code>#</code> 뒷부분에만 들어 있고 브라우저 안에서만 풀립니다. <code>#</code> 뒷부분은 서버로 전송되지 않습니다.</p>
     </div>
-    <div class="card">
+    <div class="cell">
+      <div class="num">03</div>
       <h2>없는 것</h2>
       <ul>
         <li>로그인, 입력 양식, 결제</li>
@@ -70,8 +82,10 @@
 </main>
 
 <footer>
-  <a href="https://github.com/Dkgkgk622/Chagok">GitHub</a>
-  <a href="https://github.com/Dkgkgk622/Chagok/blob/master/docs/report.html">보고서 페이지 코드</a>
+  <div class="wrap">
+    <a href="https://github.com/Dkgkgk622/Chagok">GitHub</a>
+    <a href="https://github.com/Dkgkgk622/Chagok/blob/master/docs/report.html">보고서 페이지 코드</a>
+  </div>
 </footer>
 </body>
 </html>
