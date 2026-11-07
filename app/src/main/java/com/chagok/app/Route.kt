@@ -143,25 +143,68 @@ object RouteModel {
         return points + dwells + events
     }
 
-    /** Flat projection that keeps shapes right at city scale (x east, y south), fitted to a box. */
-    class Projection(marks: List<RouteMark>, private val width: Float, private val height: Float, private val pad: Float) {
-        // Short trips: show at least ~400 m around the route so a few points do not fill the screen.
-        private val rawMinLat = marks.minOfOrNull { it.lat } ?: 0.0
-        private val rawMaxLat = marks.maxOfOrNull { it.lat } ?: 0.0
-        private val rawMinLon = marks.minOfOrNull { it.lon } ?: 0.0
-        private val rawMaxLon = marks.maxOfOrNull { it.lon } ?: 0.0
-        private val k = cos(Math.toRadians((rawMinLat + rawMaxLat) / 2))
-        private val spanY = (rawMaxLat - rawMinLat).coerceAtLeast(MIN_SPAN_DEG)
-        private val spanX = ((rawMaxLon - rawMinLon) * k).coerceAtLeast(MIN_SPAN_DEG)
-        private val minLat = (rawMinLat + rawMaxLat) / 2 - spanY / 2
-        private val maxLat = minLat + spanY
-        private val minLon = (rawMinLon + rawMaxLon) / 2 - spanX / k / 2
-        private val scale = minOf((width - 2 * pad) / spanX, (height - 2 * pad) / spanY)
-        private val offX = (width - spanX * scale) / 2
-        private val offY = (height - spanY * scale) / 2
+    /** Flat metres around the middle of the trip (x east, y north): fixed per trip so views can move. */
+    class Ground(marks: List<RouteMark>) {
+        val lat0 = ((marks.minOfOrNull { it.lat } ?: 0.0) + (marks.maxOfOrNull { it.lat } ?: 0.0)) / 2
+        val lon0 = ((marks.minOfOrNull { it.lon } ?: 0.0) + (marks.maxOfOrNull { it.lon } ?: 0.0)) / 2
+        val k = cos(Math.toRadians(lat0))
+        fun x(lon: Double) = (lon - lon0) * M_PER_DEG * k
+        fun y(lat: Double) = (lat - lat0) * M_PER_DEG
+        val minX = marks.minOfOrNull { x(it.lon) } ?: 0.0
+        val maxX = marks.maxOfOrNull { x(it.lon) } ?: 0.0
+        val minY = marks.minOfOrNull { y(it.lat) } ?: 0.0
+        val maxY = marks.maxOfOrNull { y(it.lat) } ?: 0.0
+        /** Typical metres per minute while moving (median, >= 3 km/h), from the 1-minute dots. Null if not moving. */
+        val perMinM: Double? = marks.filter { it.kind == RouteMark.Kind.MINUTE }.zipWithNext().mapNotNull { (a, b) ->
+            val min = (b.timeMs - a.timeMs) / 60_000.0
+            if (min <= 0) null else (kotlin.math.hypot(x(b.lon) - x(a.lon), y(b.lat) - y(a.lat)) / min).takeIf { it >= 50 }
+        }.sorted().let { if (it.isEmpty()) null else it[it.size / 2] }
+    }
 
-        fun x(lon: Double) = (offX + (lon - minLon) * k * scale).toFloat()
-        fun y(lat: Double) = (offY + (maxLat - lat) * scale).toFloat()
+    /** Centre in Ground metres, metres per pixel; [partial] = only the start of a long route is shown. */
+    data class View(val cx: Double, val cy: Double, val mpp: Double, val partial: Boolean) {
+        /** Keeps the ground under (px, py) still while changing the scale by [factor]. */
+        fun zoomAt(px: Float, py: Float, w: Float, h: Float, factor: Double, minMpp: Double, maxMpp: Double): View {
+            val m = (mpp * factor).coerceIn(minMpp, maxMpp)
+            val gx = cx + (px - w / 2) * mpp; val gy = cy - (py - h / 2) * mpp
+            return copy(mpp = m, cx = gx - (px - w / 2) * m, cy = gy + (py - h / 2) * m)
+        }
+        fun pan(dx: Float, dy: Float) = copy(cx = cx - dx * mpp, cy = cy + dy * mpp)
+    }
+
+    /** About this many 1-minute dots across the screen on a straight road (same rule as the phone page). */
+    const val DOTS_ACROSS = 6.5
+    /** Never closer than about this many metres across (one spot, traffic jam). */
+    const val MIN_SPAN_M = 300.0
+    private const val M_PER_DEG = 111_320.0
+
+    /**
+     * First view of a [w] x [h] px map. A long route is not squeezed onto one screen: it starts near the
+     * beginning with about [DOTS_ACROSS] minute dots across. [whole] (or a route that already fits) shows everything.
+     */
+    fun firstView(marks: List<RouteMark>, g: Ground, w: Float, h: Float, pad: Float, whole: Boolean): View {
+        val floor = MIN_SPAN_M / (minOf(w, h) - 2 * pad).coerceAtLeast(1f)
+        val fitMpp = maxOf((g.maxX - g.minX) / (w - 2 * pad), (g.maxY - g.minY) / (h - 2 * pad), floor)
+        val fit = View((g.minX + g.maxX) / 2, (g.minY + g.maxY) / 2, fitMpp, partial = false)
+        val perMin = g.perMinM
+        if (whole || perMin == null || marks.isEmpty()) return fit
+        val capMpp = maxOf(DOTS_ACROSS * perMin / (w - 2 * pad), floor)
+        if (fitMpp <= capMpp) return fit
+        // Centre a few minutes after the start so the road leads into the screen from the beginning.
+        val byTime = marks.sortedBy { it.timeMs }
+        val t = byTime.first().timeMs + (DOTS_ACROSS / 2 * 60_000).toLong()
+        val c = byTime.firstOrNull { it.timeMs >= t } ?: byTime.last()
+        return View(g.x(c.lon), g.y(c.lat), capMpp, partial = true)
+    }
+
+    /** Lat/lon to screen pixels (x right, y down) for one [view]. */
+    class Projection(private val g: Ground, private val view: View, private val width: Float, private val height: Float) {
+        /** Whole route fitted to the box (padding [pad]). */
+        constructor(marks: List<RouteMark>, width: Float, height: Float, pad: Float) :
+            this(Ground(marks), firstView(marks, Ground(marks), width, height, pad, whole = true), width, height)
+
+        fun x(lon: Double) = (width / 2 + (g.x(lon) - view.cx) / view.mpp).toFloat()
+        fun y(lat: Double) = (height / 2 - (g.y(lat) - view.cy) / view.mpp).toFloat()
     }
 
     /** Radius of the hollow rings for accel/brake on the car screen (px). */
@@ -169,9 +212,6 @@ object RouteModel {
 
     /** 1-minute stops: bigger ring so an accel/brake ring at the same spot stays visible inside. */
     const val DWELL_RING_PX = 22f
-
-    /** About 400 m of latitude. */
-    const val MIN_SPAN_DEG = 0.0036
 
     fun nearest(marks: List<RouteMark>, proj: Projection, tx: Float, ty: Float, maxPx: Float): RouteMark? {
         // Events and stops win over plain points when they are close to the finger.
