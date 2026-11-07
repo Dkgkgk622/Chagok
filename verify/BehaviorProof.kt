@@ -887,7 +887,7 @@ fun main() {
         check("도착 계기판을 못 받으면 비워 둠 (출발 값 복사 안 함)", ended != null && ended.endOdometerKm == null && ended.startOdometerKm == 2000f) { "$ended" }
     }
 
-    println("\n[32] 휴대폰 QR 크기·확인 코드")
+    println("\n[32] 휴대폰 QR 크기·보고서 번호")
     run {
         val now = System.currentTimeMillis()
         var odo = 30_000f
@@ -906,7 +906,7 @@ fun main() {
         check("한도 안에서 가장 많이 담음 (1건 더 넣으면 넘침)", n == tax.taxRows.size || prefix + more.encoded().length > Report.MAX_QR_CHARS) { "$n" }
         check("최신 운행부터 담음", fit.taxRows.last() == tax.taxRows.last())
         check("휴대폰 안내에 담은 건수와 전체 건수", fit.notes.any { it.contains("최근 ${n}건") && it.contains("전체 300건") }) { "${fit.notes}" }
-        check("확인 코드: 휴대폰 = 차 화면 (일부만 담아도 같음)", fit.toJson().toString().contains("\"check\":\"${tax.verificationCode()}\"")) { "" }
+        check("보고서 번호: 휴대폰 = 차 화면 (일부만 담아도 같음)", fit.toJson().toString().contains("\"check\":\"${tax.verificationCode()}\"")) { "" }
         println("    (참고) 업무 운행 300건 → 휴대폰에 ${n}건, URL ${len}자")
     }
 
@@ -916,6 +916,46 @@ fun main() {
         fun airbag(cur: VehicleSnapshot) = ReportBuilder.build(ReportType.BUYER, b, cur).sections.flatMap { it.rows }.first { it.first == "에어백 전개 기록" }.second
         check("신호를 못 받는 차: '확인 불가'", airbag(VehicleSnapshot()).startsWith("확인 불가"))
         check("신호를 받는 차: '없음 (기록 기간 중)'", airbag(VehicleSnapshot(airbagDeployed = false)) == "없음 (기록 기간 중)")
+    }
+
+    println("\n[34] 지도 첫 화면: 긴 경로는 1분 점 6~7개가 보이게, 짧은 경로는 전체")
+    run {
+        val t0 = 1_793_300_000_000L
+        // 1-hour straight drive, a point every 15 s, ~1 km per minute (60 km/h).
+        fun drive(minutes: Int, kmPerMin: Double) = Trip(id = 1, startMs = t0, endMs = t0 + minutes * 60_000L,
+            track = (0..minutes * 4).map { i -> TrackPoint(t0 + i * 15_000L, 37.5 + i * kmPerMin / 4 / 111.32 * 0.6, 127.0 + i * kmPerMin / 4 / 111.32 * 0.8 / Math.cos(Math.toRadians(37.5)), 60f, 60) })
+        val w = 1000f; val h = 600f; val pad = 48f
+        fun across(t: Trip): Pair<RouteModel.View, Int> {
+            val marks = RouteModel.marks(t); val g = RouteModel.Ground(marks)
+            val v = RouteModel.firstView(marks, g, w, h, pad, whole = false)
+            val proj = RouteModel.Projection(g, v, w, h)
+            return v to marks.count { it.kind == RouteMark.Kind.MINUTE && proj.x(it.lon) in 0f..w && proj.y(it.lat) in 0f..h }
+        }
+        val (vLong, nLong) = across(drive(60, 1.0))
+        check("1시간 경로: 일부만 보여 줌", vLong.partial)
+        // 6.5 minute-steps across the drawable width; a diagonal road shows a few more over the full box.
+        val stepPx = 1000.0 / vLong.mpp
+        check("1분 간격이 화면 폭의 약 1/6.5", stepPx in (w - 2 * pad) / 7.0..(w - 2 * pad) / 6.0) { "$stepPx px" }
+        check("첫 화면의 1분 점 6~10개 (직선, 대각선 포함)", nLong in 6..10) { "$nLong" }
+        val marksL = RouteModel.marks(drive(60, 1.0)); val gL = RouteModel.Ground(marksL)
+        val pStart = RouteModel.Projection(gL, vLong, w, h)
+        check("출발점이 첫 화면 안", pStart.x(marksL.first().lon) in 0f..w && pStart.y(marksL.first().lat) in 0f..h)
+        val whole = RouteModel.firstView(marksL, gL, w, h, pad, whole = true)
+        val pW = RouteModel.Projection(gL, whole, w, h)
+        check("전체 보기: 모든 점이 화면 안", !whole.partial && marksL.all { pW.x(it.lon) in 0f..w && pW.y(it.lat) in 0f..h })
+        val (vShort, _) = across(drive(5, 1.0))
+        check("5분 경로: 처음부터 전체", !vShort.partial)
+        val (vJam, _) = across(drive(60, 0.03))
+        check("정체(분당 30 m)만 1시간: 전체 표시, 300 m보다 가깝게 확대 안 함", !vJam.partial && vJam.mpp * (h - 2 * pad) >= RouteModel.MIN_SPAN_M - 1) { "${vJam.mpp}" }
+        // Pinch keeps the place under the fingers still; drag moves the ground with the finger.
+        val z = vLong.zoomAt(300f, 200f, w, h, 0.5, 0.3, 1e9)
+        val before = RouteModel.Projection(gL, vLong, w, h); val after = RouteModel.Projection(gL, z, w, h)
+        val m = marksL[40]
+        val dxBefore = before.x(m.lon) - 300f; val dxAfter = after.x(m.lon) - 300f
+        check("확대: 손가락 아래 지점 고정, 다른 점은 2배 멀어짐", kotlin.math.abs(dxAfter - 2 * dxBefore) < 0.5f) { "$dxBefore $dxAfter" }
+        val panned = RouteModel.Projection(gL, vLong.pan(40f, -30f), w, h)
+        check("끌기: 지도가 손가락만큼 이동", kotlin.math.abs(panned.x(m.lon) - before.x(m.lon) - 40f) < 0.01f &&
+            kotlin.math.abs(panned.y(m.lat) - before.y(m.lat) + 30f) < 0.01f)
     }
 
     println("\n결과: 통과 $passed / 실패 $failed")

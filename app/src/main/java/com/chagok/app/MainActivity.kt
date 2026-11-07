@@ -7,6 +7,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -41,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
@@ -141,16 +143,32 @@ private fun readableTypography(): androidx.compose.material3.Typography {
     )
 }
 
+/**
+ * Same warm reading-room palette as the phone page (docs/report.html): paper canvas, warm grays,
+ * near-black as the only button colour. Red/green/amber stay only where they mean something
+ * (recording, warning lamps, missing logbook data) and event colours only on the map.
+ */
 private object Palette {
-    val bg = Color(0xFFF3F4F6)
+    val bg = Color(0xFFF7F4ED)        // paper canvas
     val card = Color.White
-    val ink = Color(0xFF111827)
-    val sub = Color(0xFF6B7280)
-    val accent = Color(0xFF0F766E)
-    val accentSoft = Color(0xFFCCFBF1)
+    val ink = Color(0xFF242424)
+    val sub = Color(0xFF6B6B6B)
+    val accent = Color(0xFF191919)    // buttons, selected chips, emphasised text
+    val accentSoft = Color(0xFFECE7DC) // unselected chips, soft buttons
+    val btn = Color(0xFF191919)
+    val line = Color(0xFFE9E4D9)
+    val inset = Color(0xFFFAF8F3)     // box inside a card
+    val offFill = Color(0xFFF1EDE4)   // layer toggle when off
+    val off = Color(0xFFD6D0C4)
+    val muted = Color(0xFFA39E94)
+    val mapBg = Color(0xFFECE7DC)
+    val road = Color(0xFF4A4640)
     val warn = Color(0xFFB91C1C)
     val ok = Color(0xFF15803D)
 }
+
+/** Cards and boxes are square; buttons and chips are pills. */
+private val Pill = RoundedCornerShape(percent = 50)
 
 // ======================= driving =======================
 
@@ -252,7 +270,7 @@ private fun HomeTab(s: VehicleSnapshot, book: Logbook, actions: TripActions, onG
     val noMemo = real.count { it.needsMemo }
     if (unset + noMemo > 0) {
         Column(
-            Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(20.dp)).padding(24.dp)
+            Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RectangleShape).padding(24.dp)
         ) {
             Text("운행기록부에 빠진 정보가 있어요", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
             Spacer(Modifier.height(6.dp))
@@ -342,7 +360,7 @@ private fun TripCard(t: Trip, header: String?, actions: TripActions) {
             }
         }
         Spacer(Modifier.height(16.dp))
-        Box(Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFE5E7EB)))
+        Box(Modifier.fillMaxWidth().height(1.dp).background(Palette.line))
         Spacer(Modifier.height(16.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ActionButton("상세 보기", Modifier.weight(1f)) { actions.onOpen(t.id, TripView.DETAIL) }
@@ -354,7 +372,7 @@ private fun TripCard(t: Trip, header: String?, actions: TripActions) {
 @Composable
 private fun PurposeBox(t: Trip, actions: TripActions, modifier: Modifier) {
     Column(
-        modifier.background(Color(0xFFF9FAFB), RoundedCornerShape(16.dp)).padding(14.dp)
+        modifier.background(Palette.inset, RectangleShape).padding(14.dp)
     ) {
         Text(
             if (t.purpose == TripPurpose.UNSET) "운행 목적 · 선택해 주세요" else "운행 목적",
@@ -386,7 +404,7 @@ private fun VisitPurposeLine(t: Trip, actions: TripActions) {
         Text(
             if (t.memo.isBlank()) "적기 ›" else "고치기 ›",
             modifier = Modifier
-                .background(Palette.accentSoft, RoundedCornerShape(20.dp))
+                .background(Palette.accentSoft, Pill)
                 .clickable { actions.onOpen(t.id, TripView.MEMO) }
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             fontSize = 16.sp, fontWeight = FontWeight.Bold, color = Palette.accent,
@@ -446,13 +464,13 @@ private fun MemoScreen(trip: Trip, onMemo: (Long, String) -> Unit, onBack: () ->
     }
 }
 
-/** Navigation button: same colours as the tab chips (light green, green text), with an arrow. */
+/** Navigation button: same colours as the tab chips (soft warm fill, dark text), with an arrow. */
 @Composable
 private fun ActionButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit) {
     Text(
         "$label  ›",
         modifier = modifier
-            .background(Palette.accentSoft, RoundedCornerShape(24.dp))
+            .background(Palette.accentSoft, Pill)
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 16.dp),
         fontSize = 18.sp,
@@ -555,7 +573,7 @@ private fun ReportsTab(book: Logbook, s: VehicleSnapshot, onProfile: (VehiclePro
         ProfileForm(book.profile, onProfile)
         val manual = report.taxRows.count { it.needsManual }
         if (manual > 0) {
-            Column(Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RoundedCornerShape(20.dp)).padding(24.dp)) {
+            Column(Modifier.fillMaxWidth().background(Color(0xFFFEF3C7), RectangleShape).padding(24.dp)) {
                 Text("직접 기재가 필요한 운행 ${manual}건", fontSize = 21.sp, fontWeight = FontWeight.Bold, color = Color(0xFF92400E))
                 Spacer(Modifier.height(4.dp))
                 Text("계기판 거리를 확인하지 못한 운행이에요(노란 줄). 운행기록부에는 계기판 거리를 써야 해서 " +
@@ -583,7 +601,7 @@ private fun ReportsTab(book: Logbook, s: VehicleSnapshot, onProfile: (VehiclePro
     Card {
         report.notes.forEach { Text("· $it", fontSize = 16.sp, color = Palette.sub) }
         Spacer(Modifier.height(8.dp))
-        Text("확인 코드 ${report.verificationCode()}", fontSize = 16.sp, color = Palette.sub)
+        Text("보고서 번호 ${report.verificationCode()}", fontSize = 16.sp, color = Palette.sub)
     }
 }
 
@@ -621,7 +639,7 @@ private fun DriverEditor(row: TaxRow, book: Logbook, onSave: (String) -> Unit) {
     val focus = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
     val save = { keyboard?.hide(); focus.clearFocus(); onSave(if (name == defaultUser) "" else name) }
-    Column(Modifier.fillMaxWidth().background(Color(0xFFF9FAFB), RoundedCornerShape(16.dp)).padding(14.dp)) {
+    Column(Modifier.fillMaxWidth().background(Palette.inset, RectangleShape).padding(14.dp)) {
         Text("${row.date} 운행의 ④ 사용자", fontSize = 16.sp, fontWeight = FontWeight.SemiBold, color = Palette.ink)
         Spacer(Modifier.height(8.dp))
         if (known.isNotEmpty()) {
@@ -686,7 +704,7 @@ private fun DataTab(signals: Map<Field, Signal>, onAskSpeed: () -> Unit, onClear
             val dot = when (sig.status) {
                 Signal.Status.OK -> Palette.ok
                 Signal.Status.ERROR -> Palette.warn
-                Signal.Status.UNSUPPORTED, Signal.Status.WAITING -> Color(0xFF9CA3AF)
+                Signal.Status.UNSUPPORTED, Signal.Status.WAITING -> Palette.muted
             }
             Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(12.dp).background(dot, CircleShape))
@@ -844,26 +862,41 @@ private fun RouteScreen(trip: Trip, onBack: () -> Unit) {
         }
         Spacer(Modifier.height(12.dp))
         BoxWithConstraints(
-            Modifier.fillMaxWidth().height(440.dp).background(Color(0xFFF8FAFC), RoundedCornerShape(16.dp))
+            Modifier.fillMaxWidth().height(440.dp).background(Palette.mapBg)
         ) {
             val w = constraints.maxWidth.toFloat()
             val h = constraints.maxHeight.toFloat()
-            // Fitted to everything recorded, so turning a layer on or off does not move or zoom the map.
-            val proj = remember(allMarks, w, h) { RouteModel.Projection(allMarks, w, h, 48f) }
+            // Ground and first view come from everything recorded, so turning a layer on or off does not move the map.
+            val ground = remember(allMarks) { RouteModel.Ground(allMarks) }
+            val pad = 48f
+            val canClose = remember(allMarks, w, h) { RouteModel.firstView(allMarks, ground, w, h, pad, whole = false).partial }
+            val maxMpp = remember(allMarks, w, h) { RouteModel.firstView(allMarks, ground, w, h, pad, whole = true).mpp * 2 }
+            var view by remember(allMarks, w, h) { mutableStateOf(RouteModel.firstView(allMarks, ground, w, h, pad, whole = false)) }
+            val proj = RouteModel.Projection(ground, view, w, h)
             Canvas(
-                Modifier.fillMaxSize().pointerInput(marks, proj) {
-                    detectTapGestures { o -> selected = RouteModel.nearest(marks, proj, o.x, o.y, 64f) }
-                }
+                Modifier.fillMaxSize()
+                    .pointerInput(marks, view) {
+                        detectTapGestures { o -> selected = RouteModel.nearest(marks, proj, o.x, o.y, 64f) }
+                    }
+                    .pointerInput(allMarks, w, h) {
+                        // Drag to move, pinch to zoom (around the fingers).
+                        detectTransformGestures { centroid, pan, zoom, _ ->
+                            view = view.pan(pan.x, pan.y).zoomAt(centroid.x, centroid.y, w, h, 1.0 / zoom, 0.3, maxMpp)
+                        }
+                    }
             ) {
                 fun at(m: RouteMark) = Offset(proj.x(m.lon), proj.y(m.lat))
                 val line = marks.filter { it.kind == RouteMark.Kind.POINT || it.kind == RouteMark.Kind.MINUTE }
                 for (i in 1 until line.size) {
-                    drawLine(Color(0xFF64748B), at(line[i - 1]), at(line[i]), strokeWidth = 16f, cap = StrokeCap.Round)
+                    drawLine(Palette.road, at(line[i - 1]), at(line[i]), strokeWidth = 16f, cap = StrokeCap.Round)
                 }
-                line.firstOrNull()?.let { drawCircle(Color(0xFF111827), 14f, at(it), style = Stroke(5f)) }  // start
-                line.lastOrNull()?.let { drawCircle(Color(0xFF111827), 14f, at(it)) }                       // end
+                line.firstOrNull()?.let { drawCircle(Palette.btn, 14f, at(it), style = Stroke(5f)) }  // start
+                line.lastOrNull()?.let { drawCircle(Palette.btn, 14f, at(it)) }                       // end
+                // White dot every minute; zoomed far out, dots closer than 24 px would merge into a dotted line.
+                var lastDot: Offset? = null
                 line.filter { it.kind == RouteMark.Kind.MINUTE }.forEach {
-                    drawCircle(Color.White, 6f, at(it))   // white dot on the wide line, every minute
+                    val p = at(it)
+                    if (lastDot == null || (p - lastDot!!).getDistance() >= 24f) { drawCircle(Color.White, 6f, p); lastDot = p }
                 }
                 // Accel, brake and 1-minute stops: hollow rings of one size; overspeed: filled dot.
                 fun ring(color: Color, c: Offset) {
@@ -890,12 +923,19 @@ private fun RouteScreen(trip: Trip, onBack: () -> Unit) {
                         moveTo(p.x, tipY); lineTo(p.x - 18f, tipY - 34f); lineTo(p.x + 18f, tipY - 34f); close()
                     }
                     drawPath(tri, Color.White, style = Stroke(6f))
-                    drawPath(tri, Color(0xFF111827))
+                    drawPath(tri, Palette.btn)
+                }
+            }
+            if (canClose) {
+                Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                    Chip(if (view.partial) "전체 보기" else "처음 부분 보기", selected = true) {
+                        view = RouteModel.firstView(allMarks, ground, w, h, pad, whole = view.partial)
+                    }
                 }
             }
         }
         Spacer(Modifier.height(8.dp))
-        Text("○ 출발  ● 도착 · 흰 점은 1분마다의 위치예요. 점 사이는 직선이라 실제 도로와 다를 수 있어요.", fontSize = 16.sp, color = Palette.sub)
+        Text("○ 출발  ● 도착 · 흰 점은 1분마다의 위치예요. 점 사이는 직선이라 실제 도로와 다를 수 있어요. 끌어서 옮기고 두 손가락으로 확대·축소할 수 있어요.", fontSize = 16.sp, color = Palette.sub)
         Spacer(Modifier.height(12.dp))
         val sel = selected
         if (sel == null) {
@@ -949,7 +989,7 @@ private fun TripReportScreen(trip: Trip, onBack: () -> Unit) {
     Card {
         report.notes.forEach { Text("· $it", fontSize = 16.sp, color = Palette.sub) }
         Spacer(Modifier.height(8.dp))
-        Text("확인 코드 ${report.verificationCode()}", fontSize = 16.sp, color = Palette.sub)
+        Text("보고서 번호 ${report.verificationCode()}", fontSize = 16.sp, color = Palette.sub)
     }
 }
 
@@ -957,12 +997,12 @@ private fun TripReportScreen(trip: Trip, onBack: () -> Unit) {
 private fun LayerToggle(label: String, color: Color, on: Boolean, ring: Boolean = false, onClick: () -> Unit) {
     Row(
         Modifier
-            .background(if (on) Palette.accentSoft else Color(0xFFF3F4F6), RoundedCornerShape(24.dp))
+            .background(if (on) Palette.accentSoft else Palette.offFill, Pill)
             .clickable(onClick = onClick)
             .padding(horizontal = 18.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val c = if (on) color else Color(0xFFD1D5DB)
+        val c = if (on) color else Palette.off
         Box(Modifier.size(14.dp).then(if (ring) Modifier.border(3.dp, c, CircleShape) else Modifier.background(c, CircleShape)))
         Spacer(Modifier.width(8.dp))
         Text((if (on) "켜짐 · " else "꺼짐 · ") + label, fontSize = 16.sp, fontWeight = FontWeight.SemiBold,
@@ -973,7 +1013,7 @@ private fun LayerToggle(label: String, color: Color, on: Boolean, ring: Boolean 
 @Composable
 private fun Legend(color: Color, label: String, outlined: Boolean = false) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(14.dp).background(Color(0xFF64748B), CircleShape).padding(if (outlined) 3.dp else 0.dp)
+        Box(Modifier.size(14.dp).background(Palette.road, CircleShape).padding(if (outlined) 3.dp else 0.dp)
             .background(color, CircleShape))
         Spacer(Modifier.width(6.dp))
         Text(label, fontSize = 16.sp, color = Palette.sub)
@@ -1011,7 +1051,7 @@ private fun MarkInfo(m: RouteMark) {
 @Composable
 private fun Card(content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().background(Palette.card, RoundedCornerShape(20.dp)).padding(24.dp)
+        Modifier.fillMaxWidth().background(Palette.card, RectangleShape).padding(24.dp)
     ) { content() }
 }
 
@@ -1028,7 +1068,7 @@ private fun Chip(label: String, selected: Boolean, onClick: () -> Unit) {
     Text(
         label,
         modifier = Modifier
-            .background(if (selected) Palette.accent else Palette.accentSoft, RoundedCornerShape(24.dp))
+            .background(if (selected) Palette.accent else Palette.accentSoft, Pill)
             .clickable(onClick = onClick)
             .padding(horizontal = 24.dp, vertical = 14.dp),
         fontSize = 18.sp,
@@ -1043,7 +1083,7 @@ private fun BigButton(label: String, onClick: () -> Unit) {
         label,
         modifier = Modifier
             .fillMaxWidth()
-            .background(Palette.accent, RoundedCornerShape(16.dp))
+            .background(Palette.accent, Pill)
             .clickable(onClick = onClick)
             .padding(vertical = 20.dp),
         fontSize = 20.sp,

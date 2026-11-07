@@ -5,42 +5,73 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="google-site-verification" content="TopSiUegK7ERnjS6fgrWcu98PKGq_bdVoX9aY5E9M6k" />
 <title>차곡 (Chagok)</title>
-<meta name="description" content="차곡: 차량이 스스로 쌓는 운행 기록. 현대자동차그룹 차량용 앱 개발 공모전 출품작(Pleos Connect). 이 사이트는 앱의 QR 보고서를 휴대폰에서 보여 주는 정적 페이지입니다.">
+<meta name="description" content="차곡: 차량이 스스로 쌓는 운행 기록. 차량용 앱 개발 공모전 출품작입니다. 이 사이트는 앱이 만든 운행 보고서를 읽기 전용으로 보여 주는 정적 페이지입니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#f3f4f6; --card:#fff; --ink:#111827; --sub:#6b7280; --accent:#0f766e; --line:#e5e7eb; }
-  @media (prefers-color-scheme: dark) { :root { --bg:#0b0f14; --card:#151b23; --ink:#f3f4f6; --sub:#9ca3af; --accent:#2dd4bf; --line:#263040; } }
-  body { margin:0; background:var(--bg); color:var(--ink); font-family:-apple-system,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif; line-height:1.6; }
-  main { max-width:720px; margin:0 auto; padding:32px 16px 48px; }
-  .brand { color:var(--accent); font-weight:700; }
-  section { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:16px 20px; margin:16px 0; }
-  h1 { margin:4px 0 8px; font-size:26px; } h2 { font-size:18px; margin:0 0 8px; }
-  p, li { color:var(--ink); } .sub { color:var(--sub); }
-  a { color:var(--accent); }
+  /* Same reading-room look as report.html: warm paper, warm grays, serif display, one pill button. */
+  :root { --canvas:#f7f4ed; --paper:#fff; --ink:#242424; --body:#333; --btn:#191919; --sub:#6b6b6b; --line:#e9e4d9;
+          --serif:"Noto Serif KR", "Noto Serif CJK KR", "AppleMyungjo", "Batang", Georgia, serif;
+          --sans:-apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--canvas); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.6;  word-break:keep-all; overflow-wrap:anywhere;}
+  a { color:var(--ink); text-underline-offset:3px; }
+  header, main, footer { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+  header { display:flex; justify-content:space-between; align-items:center; height:64px; }
+  .mark { color:var(--ink); font-size:20px; text-decoration:none; }
+  nav a { font-size:14px; text-decoration:none; margin-left:24px; }
+  nav a:hover { text-decoration:underline; }
+  .hero { padding: 56px 0 64px; border-bottom: 1px solid var(--line); }
+  h1 { font-family:var(--serif); font-weight:400; color:var(--ink); font-size: clamp(44px, 10vw, 96px); line-height:1.04; letter-spacing:-0.035em; margin:0; }
+  .lede { color:var(--sub); font-size:20px; line-height:1.45; margin:24px 0 32px; max-width: 34em; }
+  .pill { display:inline-block; background:var(--btn); color:#fff; text-decoration:none; font-size:14px; padding:9px 20px; border-radius:9999px; }
+  .cols { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:16px; padding:48px 0 16px; }
+  .card { background:var(--paper); padding:20px 16px; }
+  h2 { font-family:var(--serif); font-weight:600; color:var(--ink); font-size:19px; margin:0 0 8px; }
+  .card p, .card li { font-size:15px; margin:0; }
+  .card ul { margin:0; padding-left:18px; }
+  .card li + li { margin-top:4px; }
+  footer { padding: 48px 16px 40px; text-align:center; font-size:13px; color:var(--sub); }
+  footer a { color:var(--sub); margin:0 8px; }
 </style>
 </head>
 <body>
+<header>
+  <a class="mark" href="./">차곡</a>
+  <nav><a href="https://github.com/Dkgkgk622/Chagok">소스 코드</a></nav>
+</header>
+
 <main>
-  <div class="brand">차곡 · Chagok</div>
-  <h1>차가 스스로 쌓는 운행 기록</h1>
-  <p class="sub">현대자동차그룹 차량용 앱 개발 공모전 출품작 · Pleos Connect(차량 인포테인먼트) 앱</p>
-
-  <section>
-    <h2>이 사이트는 무엇인가요</h2>
-    <p>차곡 앱이 차 화면에 띄우는 QR 코드를 휴대폰으로 찍으면 열리는 <b>보고서 보기 페이지</b>입니다.
-      보고서 내용은 QR 주소의 <code>#</code> 뒷부분에 들어 있고, 휴대폰 브라우저 안에서만 풀어 보여 줍니다.
-      <code>#</code> 뒷부분은 브라우저가 서버로 보내지 않으므로, 이 사이트(GitHub Pages)에는 어떤 기록도 전송·저장되지 않습니다.</p>
-    <ul>
-      <li>로그인, 입력 양식, 결제, 파일 내려받기가 없습니다.</li>
-      <li>개인정보를 묻지 않습니다.</li>
-      <li>운행 보고서의 지도·주소는 카카오맵으로 표시합니다(설정된 경우).</li>
-    </ul>
+  <section class="hero">
+    <h1>차가 스스로<br>쌓는 운행 기록</h1>
+    <p class="lede">달리는 동안 차가 알아서 기록하고, 세워 두었을 때 주간 요약·정비용·차 이력·운행기록부로 정리합니다. 차량용 앱 개발 공모전 출품작입니다.</p>
+    <a class="pill" href="https://github.com/Dkgkgk622/Chagok">소스 코드 보기</a>
   </section>
 
-  <section>
-    <h2>소스 코드</h2>
-    <p>앱과 이 페이지의 전체 소스는 공개되어 있습니다: <a href="https://github.com/Dkgkgk622/Chagok">github.com/Dkgkgk622/Chagok</a><br>
-      이 페이지의 코드: <a href="https://github.com/Dkgkgk622/Chagok/blob/master/docs/report.html">docs/report.html</a></p>
-  </section>
+  <div class="cols">
+    <div class="card">
+      <h2>이 사이트는</h2>
+      <p>차곡 앱이 만든 운행 보고서를 휴대폰에서 읽을 수 있게 보여 주는 읽기 전용 페이지입니다.</p>
+    </div>
+    <div class="card">
+      <h2>데이터는 어디에</h2>
+      <p>보고서 내용은 링크 주소의 <code>#</code> 뒷부분에만 들어 있고 브라우저 안에서만 풀립니다. <code>#</code> 뒷부분은 서버로 전송되지 않습니다.</p>
+    </div>
+    <div class="card">
+      <h2>없는 것</h2>
+      <ul>
+        <li>로그인, 입력 양식, 결제</li>
+        <li>파일 내려받기</li>
+        <li>개인정보 수집</li>
+      </ul>
+    </div>
+  </div>
 </main>
+
+<footer>
+  <a href="https://github.com/Dkgkgk622/Chagok">GitHub</a>
+  <a href="https://github.com/Dkgkgk622/Chagok/blob/master/docs/report.html">보고서 페이지 코드</a>
+</footer>
 </body>
 </html>
