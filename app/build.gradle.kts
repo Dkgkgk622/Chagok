@@ -39,6 +39,12 @@ android {
         }
     }
 
+    // Release builds skip the "lint vital" pass: on Windows its cache jars get locked by the
+    // Gradle daemon ("다른 프로세스가 파일을 사용 중"). Run Code > Inspect Code / lint manually instead.
+    lint {
+        checkReleaseBuilds = false
+    }
+
     // Google Play dependency metadata block is not needed for this APK.
     dependenciesInfo {
         includeInApk = false
@@ -61,6 +67,7 @@ dependencies {
     implementation(libs.vehicle.sdk)
     implementation(libs.navi.helper.sdk)
     implementation(libs.zxing.core)
+    implementation(libs.osmdroid) // car-screen base map (OpenStreetMap), see OsmMap.kt
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.compose)

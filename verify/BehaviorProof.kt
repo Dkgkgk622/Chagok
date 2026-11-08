@@ -983,6 +983,14 @@ fun main() {
         check("많이 축소하면 겹치는 1분 점은 안 그림(마지막 점은 남김), 안 그린 점은 못 누름",
             drawnFar.size < mins.size && drawnFar.last() == mins.last() &&
                 RouteModel.tappable(marksL, far).none { it.kind == RouteMark.Kind.MINUTE && it !in drawnFar }) { "${drawnFar.size}/${mins.size}" }
+        // Base map (OsmMap): the first view becomes a lat/lon box of exactly the same metres.
+        val bx = OsmMap.box(gL, vLong, w, h)
+        val boxH = (bx.latNorth - bx.latSouth) * 111_320.0
+        val boxW = (bx.lonEast - bx.lonWest) * 111_320.0 * gL.k
+        check("바탕 지도 상자 = 첫 화면 범위 (가로·세로 m, 중심)",
+            kotlin.math.abs(boxH - vLong.mpp * h) < 0.5 && kotlin.math.abs(boxW - vLong.mpp * w) < 0.5 &&
+                kotlin.math.abs(gL.y((bx.latNorth + bx.latSouth) / 2) - vLong.cy) < 0.5 &&
+                kotlin.math.abs(gL.x((bx.lonEast + bx.lonWest) / 2) - vLong.cx) < 0.5) { "$boxW x $boxH vs ${vLong.mpp * w} x ${vLong.mpp * h}" }
         check("끌기: 지도가 손가락만큼 이동", kotlin.math.abs(panned.x(m.lon) - before.x(m.lon) - 40f) < 0.01f &&
             kotlin.math.abs(panned.y(m.lat) - before.y(m.lat) + 30f) < 0.01f)
     }

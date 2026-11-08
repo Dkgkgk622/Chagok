@@ -43,6 +43,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.RectangleShape
@@ -866,89 +870,14 @@ private fun RouteScreen(trip: Trip, onBack: () -> Unit) {
             LayerToggle("1분 이상 정차", DWELL_COLOR, showDwell, ring = true) { showDwell = !showDwell }
         }
         Spacer(Modifier.height(12.dp))
-        BoxWithConstraints(
-            // clipToBounds: a Compose Canvas draws outside its own box unless clipped (the road ran over the card above).
-            Modifier.fillMaxWidth().height(520.dp).clipToBounds().background(Palette.mapBg)
-        ) {
-            val w = constraints.maxWidth.toFloat()
-            val h = constraints.maxHeight.toFloat()
-            // Ground and first view come from everything recorded, so turning a layer on or off does not move the map.
-            val ground = remember(allMarks) { RouteModel.Ground(allMarks) }
-            val pad = 48f
-            val canClose = remember(allMarks, w, h) { RouteModel.firstView(allMarks, ground, w, h, pad, whole = false).partial }
-            val maxMpp = remember(allMarks, w, h) { RouteModel.firstView(allMarks, ground, w, h, pad, whole = true).mpp * 2 }
-            var view by remember(allMarks, w, h) { mutableStateOf(RouteModel.firstView(allMarks, ground, w, h, pad, whole = false)) }
-            val proj = RouteModel.Projection(ground, view, w, h)
-            Canvas(
-                Modifier.fillMaxSize()
-                    .pointerInput(marks, view) {
-                        detectTapGestures { o -> selected = RouteModel.nearest(RouteModel.tappable(marks, proj), proj, o.x, o.y, 64f) }
-                    }
-                    .pointerInput(allMarks, w, h) {
-                        // Drag to move, pinch to zoom (around the fingers).
-                        detectTransformGestures { centroid, pan, zoom, _ ->
-                            view = view.pan(pan.x, pan.y).zoomAt(centroid.x, centroid.y, w, h, 1.0 / zoom, 0.3, maxMpp)
-                                .keepRoute(ground.line, w, h)
-                        }
-                    }
-            ) {
-                fun at(m: RouteMark) = Offset(proj.x(m.lon), proj.y(m.lat))
-                val line = marks.filter { it.kind == RouteMark.Kind.POINT || it.kind == RouteMark.Kind.MINUTE }
-                for (i in 1 until line.size) {
-                    drawLine(Palette.road, at(line[i - 1]), at(line[i]), strokeWidth = 16f, cap = StrokeCap.Round)
-                }
-                line.firstOrNull()?.let { drawCircle(Palette.btn, 14f, at(it), style = Stroke(5f)) }  // start
-                line.lastOrNull()?.let { drawCircle(Palette.btn, 14f, at(it)) }                       // end
-                // White dot every minute (thinned when zoomed out); only these, events and stops can be tapped.
-                RouteModel.drawnMinutes(marks, proj).forEach { drawCircle(Color.White, 6f, at(it)) }
-                // Accel, brake and 1-minute stops: hollow rings of one size; overspeed: filled dot.
-                fun ring(color: Color, c: Offset) {
-                    drawCircle(Color.White, RouteModel.RING_PX, c, style = Stroke(10f))   // halo for contrast
-                    drawCircle(color, RouteModel.RING_PX, c, style = Stroke(6f))
-                }
-                // 1-minute stops: a bigger ring, so an event at the same spot shows inside it.
-                marks.filter { it.kind == RouteMark.Kind.DWELL }.forEach {
-                    drawCircle(Color.White, RouteModel.DWELL_RING_PX, at(it), style = Stroke(10f))
-                    drawCircle(DWELL_COLOR, RouteModel.DWELL_RING_PX, at(it), style = Stroke(6f))
-                }
-                marks.filter { it.kind == RouteMark.Kind.EVENT }.forEach {
-                    val type = it.event!!.type
-                    if (type == DriveEvent.Type.OVERSPEED) {
-                        drawCircle(eventColor(type), 13f, at(it))
-                        drawCircle(Color.White, 13f, at(it), style = Stroke(4f))
-                    } else ring(eventColor(type), at(it))
-                }
-                // Selected place: a downward triangle pointing at it.
-                selected?.let {
-                    val p = at(it)
-                    val tipY = p.y // tip on the centre of the road
-                    val tri = androidx.compose.ui.graphics.Path().apply {
-                        moveTo(p.x, tipY); lineTo(p.x - 18f, tipY - 34f); lineTo(p.x + 18f, tipY - 34f); close()
-                    }
-                    drawPath(tri, Color.White, style = Stroke(6f))
-                    drawPath(tri, Palette.btn)
-                }
-            }
-            // Zoom buttons (pinch also works): around the middle of the map, never losing the road.
-            Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
-                listOf("+" to 0.5, "−" to 2.0).forEach { (label, factor) ->
-                    Box(
-                        Modifier.size(56.dp).background(Palette.card, BtnShape).border(1.dp, Palette.line, BtnShape)
-                            .clickable { view = view.zoomAt(w / 2, h / 2, w, h, factor, 0.3, maxMpp).keepRoute(ground.line, w, h) },
-                        contentAlignment = Alignment.Center,
-                    ) { Text(label, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Palette.ink) }
-                }
-            }
-            if (canClose) {
-                Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
-                    Chip(if (view.partial) "전체 보기" else "처음 부분 보기", selected = true) {
-                        view = RouteModel.firstView(allMarks, ground, w, h, pad, whole = view.partial)
-                    }
-                }
-            }
-        }
+        // Base map when online (OpenStreetMap), the plain drawing otherwise. Checked once per opening.
+        val context = LocalContext.current
+        val online = remember(trip) { OsmMap.hasInternet(context) }
+        if (online) OsmRouteMap(allMarks, marks, selected) { selected = it }
+        else DrawnRouteMap(allMarks, marks, selected) { selected = it }
         Spacer(Modifier.height(8.dp))
-        Text("○ 출발  ● 도착 · 흰 점은 1분마다의 위치예요. 점 사이는 직선이라 실제 도로와 다를 수 있어요. 끌어서 옮기고 두 손가락으로 확대·축소할 수 있어요.", fontSize = 16.sp, color = Palette.sub)
+        Text("○ 출발  ● 도착 · 흰 점은 1분마다의 위치예요. 점 사이는 직선이라 실제 도로와 다를 수 있어요. 끌어서 옮기고 두 손가락으로 확대·축소할 수 있어요." +
+            if (online) " 바탕 지도: OpenStreetMap (보이는 지역만 받아와요)" else " 인터넷이 없어 바탕 지도 없이 그렸어요.", fontSize = 16.sp, color = Palette.sub)
         Spacer(Modifier.height(12.dp))
         val sel = selected
         if (sel == null) {
@@ -958,6 +887,154 @@ private fun RouteScreen(trip: Trip, onBack: () -> Unit) {
         }
     }
     tripInfo()
+}
+
+/** The route drawn without a base map (offline). Own pan/zoom; same view rules as the base map. */
+@Composable
+private fun DrawnRouteMap(allMarks: List<RouteMark>, marks: List<RouteMark>, selected: RouteMark?, onSelect: (RouteMark?) -> Unit) {
+    BoxWithConstraints(
+        // clipToBounds: a Compose Canvas draws outside its own box unless clipped (the road ran over the card above).
+        Modifier.fillMaxWidth().height(520.dp).clipToBounds().background(Palette.mapBg)
+    ) {
+        val w = constraints.maxWidth.toFloat()
+        val h = constraints.maxHeight.toFloat()
+        // Ground and first view come from everything recorded, so turning a layer on or off does not move the map.
+        val ground = remember(allMarks) { RouteModel.Ground(allMarks) }
+        val pad = 48f
+        val canClose = remember(allMarks, w, h) { RouteModel.firstView(allMarks, ground, w, h, pad, whole = false).partial }
+        val maxMpp = remember(allMarks, w, h) { RouteModel.firstView(allMarks, ground, w, h, pad, whole = true).mpp * 2 }
+        var view by remember(allMarks, w, h) { mutableStateOf(RouteModel.firstView(allMarks, ground, w, h, pad, whole = false)) }
+        val proj = RouteModel.Projection(ground, view, w, h)
+        Canvas(
+            Modifier.fillMaxSize()
+                .pointerInput(marks, view) {
+                    detectTapGestures { o -> onSelect(RouteModel.nearest(RouteModel.tappable(marks, proj), proj, o.x, o.y, 64f)) }
+                }
+                .pointerInput(allMarks, w, h) {
+                    // Drag to move, pinch to zoom (around the fingers).
+                    detectTransformGestures { centroid, pan, zoom, _ ->
+                        view = view.pan(pan.x, pan.y).zoomAt(centroid.x, centroid.y, w, h, 1.0 / zoom, 0.3, maxMpp)
+                            .keepRoute(ground.line, w, h)
+                    }
+                }
+        ) {
+            fun at(m: RouteMark) = Offset(proj.x(m.lon), proj.y(m.lat))
+            val line = marks.filter { it.kind == RouteMark.Kind.POINT || it.kind == RouteMark.Kind.MINUTE }
+            for (i in 1 until line.size) {
+                drawLine(Palette.road, at(line[i - 1]), at(line[i]), strokeWidth = 16f, cap = StrokeCap.Round)
+            }
+            line.firstOrNull()?.let { drawCircle(Palette.btn, 14f, at(it), style = Stroke(5f)) }  // start
+            line.lastOrNull()?.let { drawCircle(Palette.btn, 14f, at(it)) }                       // end
+            // White dot every minute (thinned when zoomed out); only these, events and stops can be tapped.
+            RouteModel.drawnMinutes(marks, proj).forEach { drawCircle(Color.White, 6f, at(it)) }
+            // Accel, brake and 1-minute stops: hollow rings of one size; overspeed: filled dot.
+            fun ring(color: Color, c: Offset) {
+                drawCircle(Color.White, RouteModel.RING_PX, c, style = Stroke(10f))   // halo for contrast
+                drawCircle(color, RouteModel.RING_PX, c, style = Stroke(6f))
+            }
+            // 1-minute stops: a bigger ring, so an event at the same spot shows inside it.
+            marks.filter { it.kind == RouteMark.Kind.DWELL }.forEach {
+                drawCircle(Color.White, RouteModel.DWELL_RING_PX, at(it), style = Stroke(10f))
+                drawCircle(DWELL_COLOR, RouteModel.DWELL_RING_PX, at(it), style = Stroke(6f))
+            }
+            marks.filter { it.kind == RouteMark.Kind.EVENT }.forEach {
+                val type = it.event!!.type
+                if (type == DriveEvent.Type.OVERSPEED) {
+                    drawCircle(eventColor(type), 13f, at(it))
+                    drawCircle(Color.White, 13f, at(it), style = Stroke(4f))
+                } else ring(eventColor(type), at(it))
+            }
+            // Selected place: a downward triangle pointing at it.
+            selected?.let {
+                val p = at(it)
+                val tipY = p.y // tip on the centre of the road
+                val tri = androidx.compose.ui.graphics.Path().apply {
+                    moveTo(p.x, tipY); lineTo(p.x - 18f, tipY - 34f); lineTo(p.x + 18f, tipY - 34f); close()
+                }
+                drawPath(tri, Color.White, style = Stroke(6f))
+                drawPath(tri, Palette.btn)
+            }
+        }
+        // Zoom buttons (pinch also works): around the middle of the map, never losing the road.
+        Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
+            listOf("+" to 0.5, "−" to 2.0).forEach { (label, factor) ->
+                Box(
+                    Modifier.size(56.dp).background(Palette.card, BtnShape).border(1.dp, Palette.line, BtnShape)
+                        .clickable { view = view.zoomAt(w / 2, h / 2, w, h, factor, 0.3, maxMpp).keepRoute(ground.line, w, h) },
+                    contentAlignment = Alignment.Center,
+                ) { Text(label, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Palette.ink) }
+            }
+        }
+        if (canClose) {
+            Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                Chip(if (view.partial) "전체 보기" else "처음 부분 보기", selected = true) {
+                    view = RouteModel.firstView(allMarks, ground, w, h, pad, whole = view.partial)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * The route on an OpenStreetMap base map (OsmMap.kt). The map itself handles drag and pinch; the
+ * first view, zoom buttons, "전체 보기" and taps follow the same rules as DrawnRouteMap.
+ */
+@Composable
+private fun OsmRouteMap(allMarks: List<RouteMark>, marks: List<RouteMark>, selected: RouteMark?, onSelect: (RouteMark?) -> Unit) {
+    val context = LocalContext.current
+    val select by rememberUpdatedState(onSelect)
+    val ground = remember(allMarks) { RouteModel.Ground(allMarks) }
+    val pad = 48f
+    var partial by remember(allMarks) { mutableStateOf(true) }
+    var canClose by remember(allMarks) { mutableStateOf(false) }
+    val overlay = remember(allMarks) {
+        RouteOverlay(ground, { eventColor(it.event!!.type).toArgb() }, Palette.road.toArgb(), DWELL_COLOR.toArgb(), Palette.navy.toArgb()) { select(it) }
+    }
+    val mapView = remember(allMarks) { OsmMap.newMapView(context).also { it.overlays.add(overlay) } }
+
+    fun show(whole: Boolean) {
+        val w = mapView.width.toFloat(); val h = mapView.height.toFloat()
+        if (w <= 0f || h <= 0f) return
+        val v = RouteModel.firstView(allMarks, ground, w, h, pad, whole)
+        mapView.zoomToBoundingBox(OsmMap.box(ground, v, w, h), false)
+        partial = v.partial
+    }
+
+    DisposableEffect(mapView) {
+        mapView.addOnFirstLayoutListener { _, _, _, _, _ ->
+            val w = mapView.width.toFloat(); val h = mapView.height.toFloat()
+            // Limits: zoom out one step past the whole route; pan only around the route (never lose the road).
+            mapView.zoomToBoundingBox(OsmMap.box(ground, RouteModel.firstView(allMarks, ground, w, h, pad, whole = true), w, h), false)
+            mapView.setMinZoomLevel(mapView.zoomLevelDouble - 1)
+            val ext = maxOf(ground.maxX - ground.minX, ground.maxY - ground.minY, 2 * RouteModel.MIN_SPAN_M)
+            mapView.setScrollableAreaLimitDouble(org.osmdroid.util.BoundingBox(
+                ground.latOf(ground.maxY + ext), ground.lonOf(ground.maxX + ext), ground.latOf(ground.minY - ext), ground.lonOf(ground.minX - ext)))
+            canClose = RouteModel.firstView(allMarks, ground, w, h, pad, whole = false).partial
+            show(whole = false)
+        }
+        mapView.onResume()
+        onDispose { mapView.onPause(); mapView.onDetach() }
+    }
+
+    Box(Modifier.fillMaxWidth().height(520.dp).clipToBounds().background(Palette.mapBg, RoundedCornerShape(12.dp))) {
+        AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize(), update = {
+            overlay.marks = marks; overlay.selected = selected; it.invalidate()
+        })
+        Column(Modifier.align(Alignment.TopStart).padding(12.dp)) {
+            listOf("+" to true, "−" to false).forEach { (label, zoomIn) ->
+                Box(
+                    Modifier.size(56.dp).background(Palette.card, BtnShape).border(1.dp, Palette.line, BtnShape)
+                        .clickable { if (zoomIn) mapView.controller.zoomIn() else mapView.controller.zoomOut() },
+                    contentAlignment = Alignment.Center,
+                ) { Text(label, fontSize = 28.sp, fontWeight = FontWeight.Bold, color = Palette.ink) }
+            }
+        }
+        if (canClose) {
+            Box(Modifier.align(Alignment.TopEnd).padding(12.dp)) {
+                Chip(if (partial) "전체 보기" else "처음 부분 보기", selected = true) { show(whole = partial) }
+            }
+        }
+    }
 }
 
 /** One trip's report: the same rows, notes, check code and the QR for the phone page (map, address, road view). */

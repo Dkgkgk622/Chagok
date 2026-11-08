@@ -18,6 +18,9 @@
     <uses-permission android:name="android.car.permission.CAR_POWERTRAIN" /> <!-- gear -->
 
     <!-- Keep recording while driving even when another app is on screen -->
+    <!-- Car-screen base map tiles (OpenStreetMap). Recording itself never uses the network. -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />

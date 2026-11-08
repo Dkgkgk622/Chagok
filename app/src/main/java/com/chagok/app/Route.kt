@@ -127,6 +127,12 @@ data class RouteMark(
     enum class Kind { POINT, MINUTE, EVENT, DWELL }
 }
 
+/** Lat/lon to screen pixels. Implemented by the drawn map (RouteModel.Projection) and the base map (OsmMap.kt). */
+interface ScreenProjection {
+    fun x(lon: Double): Float
+    fun y(lat: Double): Float
+}
+
 object RouteModel {
     /** Everything that can be shown and tapped, most important last (drawn on top, picked first). */
     fun marks(trip: Trip): List<RouteMark> {
@@ -150,6 +156,8 @@ object RouteModel {
         val k = cos(Math.toRadians(lat0))
         fun x(lon: Double) = (lon - lon0) * M_PER_DEG * k
         fun y(lat: Double) = (lat - lat0) * M_PER_DEG
+        fun lonOf(x: Double) = lon0 + x / (M_PER_DEG * k)
+        fun latOf(y: Double) = lat0 + y / M_PER_DEG
         val minX = marks.minOfOrNull { x(it.lon) } ?: 0.0
         val maxX = marks.maxOfOrNull { x(it.lon) } ?: 0.0
         val minY = marks.minOfOrNull { y(it.lat) } ?: 0.0
@@ -231,13 +239,13 @@ object RouteModel {
     }
 
     /** Lat/lon to screen pixels (x right, y down) for one [view]. */
-    class Projection(private val g: Ground, private val view: View, private val width: Float, private val height: Float) {
+    class Projection(private val g: Ground, private val view: View, private val width: Float, private val height: Float) : ScreenProjection {
         /** Whole route fitted to the box (padding [pad]). */
         constructor(marks: List<RouteMark>, width: Float, height: Float, pad: Float) :
             this(Ground(marks), firstView(marks, Ground(marks), width, height, pad, whole = true), width, height)
 
-        fun x(lon: Double) = (width / 2 + (g.x(lon) - view.cx) / view.mpp).toFloat()
-        fun y(lat: Double) = (height / 2 - (g.y(lat) - view.cy) / view.mpp).toFloat()
+        override fun x(lon: Double) = (width / 2 + (g.x(lon) - view.cx) / view.mpp).toFloat()
+        override fun y(lat: Double) = (height / 2 - (g.y(lat) - view.cy) / view.mpp).toFloat()
     }
 
     /** Radius of the hollow rings for accel/brake on the car screen (px). */
@@ -250,7 +258,7 @@ object RouteModel {
     const val DOT_MIN_GAP_PX = 24f
 
     /** The 1-minute dots actually drawn for [proj] (thinned when zoomed out; the last one always stays). */
-    fun drawnMinutes(marks: List<RouteMark>, proj: Projection): List<RouteMark> {
+    fun drawnMinutes(marks: List<RouteMark>, proj: ScreenProjection): List<RouteMark> {
         val minutes = marks.filter { it.kind == RouteMark.Kind.MINUTE }
         var lastX = Float.NaN; var lastY = Float.NaN
         return minutes.filterIndexed { i, m ->
@@ -265,10 +273,10 @@ object RouteModel {
      * What a tap can pick: the drawn minute dots, events and stops. Not the 15-second points or the road
      * between dots: zoomed in, "some spots work and some don't" was worse than "only the dots work" (Nov 2026).
      */
-    fun tappable(marks: List<RouteMark>, proj: Projection): List<RouteMark> =
+    fun tappable(marks: List<RouteMark>, proj: ScreenProjection): List<RouteMark> =
         drawnMinutes(marks, proj) + marks.filter { it.kind == RouteMark.Kind.EVENT || it.kind == RouteMark.Kind.DWELL }
 
-    fun nearest(marks: List<RouteMark>, proj: Projection, tx: Float, ty: Float, maxPx: Float): RouteMark? {
+    fun nearest(marks: List<RouteMark>, proj: ScreenProjection, tx: Float, ty: Float, maxPx: Float): RouteMark? {
         // Events and stops win over minute dots when they are close to the finger. Plain points never.
         val ranked = marks.filter { it.kind != RouteMark.Kind.POINT }.map { m ->
             val dx = proj.x(m.lon) - tx; val dy = proj.y(m.lat) - ty

@@ -4,7 +4,7 @@
 -keep interface ai.pleos.** { *; }
 -dontwarn ai.pleos.**
 
-# Android Automotive car API is provided by the system at runtime.& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" forward tcp:8088 tcp:8088
+# Android Automotive car API is provided by the system at runtime.
 -dontwarn android.car.**
 
 # Enums are read back from saved JSON by name (Type.valueOf), which R8 keeps; nothing else
@@ -15,3 +15,6 @@
 -keep class androidx.compose.ui.platform.AndroidCompositionLocals_androidKt {
     public static *** getLocalLifecycleOwner();
 }
+
+# osmdroid (car-screen base map): plain Java, no reflection on app classes; silence optional references.
+-dontwarn org.osmdroid.**
