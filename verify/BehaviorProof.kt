@@ -933,10 +933,15 @@ fun main() {
         }
         val (vLong, nLong) = across(drive(60, 1.0))
         check("1시간 경로: 일부만 보여 줌", vLong.partial)
-        // 6.5 minute-steps across the drawable width; a diagonal road shows a few more over the full box.
+        // 6.5 minute-steps across the whole visible width; a diagonal road shows a few more over the full box.
         val stepPx = 1000.0 / vLong.mpp
-        check("1분 간격이 화면 폭의 약 1/6.5", stepPx in (w - 2 * pad) / 7.0..(w - 2 * pad) / 6.0) { "$stepPx px" }
-        check("첫 화면의 1분 점 6~10개 (직선, 대각선 포함)", nLong in 6..10) { "$nLong" }
+        check("1분 간격이 화면 폭의 1/6.5 (폭에 6~7개)", stepPx in w / 7.0..w / 6.0) { "$stepPx px" }
+        // A diagonal road crosses less of a wide, short screen than its width (and the start stays on screen).
+        check("대각선 도로(1000x600): 첫 화면 1분 점 5~8개", nLong in 5..8) { "$nLong" }
+        val east = Trip(id = 2, startMs = t0, endMs = t0 + 3_600_000L,
+            track = (0..240).map { i -> TrackPoint(t0 + i * 15_000L, 37.5, 127.0 + i * 0.25 / 111.32 / Math.cos(Math.toRadians(37.5)), 60f, 60) })
+        val (vEast, nEast) = across(east)
+        check("동서 직선 도로: 첫 화면 1분 점 6~7개", vEast.partial && nEast in 6..7) { "$nEast" }
         val marksL = RouteModel.marks(drive(60, 1.0)); val gL = RouteModel.Ground(marksL)
         val pStart = RouteModel.Projection(gL, vLong, w, h)
         check("출발점이 첫 화면 안", pStart.x(marksL.first().lon) in 0f..w && pStart.y(marksL.first().lat) in 0f..h)
@@ -962,6 +967,22 @@ fun main() {
                 x in 59f..w - 59f && y in 59f..h - 59f } }
         check("멀리 끌어도 길의 일부는 화면 안 (가장자리 60px 안쪽)", onScreen)
         check("길이 이미 보이면 끌기를 막지 않음", vLong.pan(40f, -30f).keepRoute(gL.line, w, h) == vLong.pan(40f, -30f))
+        // Taps: only drawn minute dots, events and stops.
+        val pz = RouteModel.Projection(gL, vLong.zoomAt(w / 2, h / 2, w, h, 0.1, 0.01, 1e9), w, h) // zoomed in 10x
+        val mins = marksL.filter { it.kind == RouteMark.Kind.MINUTE }
+        val a = mins[3]; val b = mins[4]
+        val midX = (pz.x(a.lon) + pz.x(b.lon)) / 2; val midY = (pz.y(a.lat) + pz.y(b.lat)) / 2
+        check("확대 후 두 1분 점 사이의 길을 누르면 아무것도 선택 안 됨",
+            RouteModel.nearest(RouteModel.tappable(marksL, pz), pz, midX, midY, 64f) == null)
+        val q = marksL.first { it.kind == RouteMark.Kind.POINT && it.timeMs > a.timeMs }
+        check("15초 점(그려지지 않음)을 정확히 눌러도 선택 안 됨",
+            RouteModel.nearest(RouteModel.tappable(marksL, pz), pz, pz.x(q.lon), pz.y(q.lat), 30f) == null)
+        check("1분 점을 누르면 그 점", RouteModel.nearest(RouteModel.tappable(marksL, pz), pz, pz.x(a.lon) + 6f, pz.y(a.lat), 64f) == a)
+        val far = RouteModel.Projection(gL, whole.copy(mpp = whole.mpp * 3), w, h)
+        val drawnFar = RouteModel.drawnMinutes(marksL, far)
+        check("많이 축소하면 겹치는 1분 점은 안 그림(마지막 점은 남김), 안 그린 점은 못 누름",
+            drawnFar.size < mins.size && drawnFar.last() == mins.last() &&
+                RouteModel.tappable(marksL, far).none { it.kind == RouteMark.Kind.MINUTE && it !in drawnFar }) { "${drawnFar.size}/${mins.size}" }
         check("끌기: 지도가 손가락만큼 이동", kotlin.math.abs(panned.x(m.lon) - before.x(m.lon) - 40f) < 0.01f &&
             kotlin.math.abs(panned.y(m.lat) - before.y(m.lat) + 30f) < 0.01f)
     }

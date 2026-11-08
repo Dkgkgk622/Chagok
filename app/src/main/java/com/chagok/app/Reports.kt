@@ -21,7 +21,8 @@ enum class ReportType(val title: String, val tab: String, val reader: String) {
 }
 
 /** The reports chosen from the report tab (the route report is opened from a trip). */
-val SHAREABLE_REPORTS = listOf(ReportType.WEEKLY, ReportType.SERVICE, ReportType.BUYER, ReportType.TAX)
+// Evidence for other people first (logbook, mechanic, buyer), the owner's own weekly summary last (Nov 2026 positioning).
+val SHAREABLE_REPORTS = listOf(ReportType.TAX, ReportType.SERVICE, ReportType.BUYER, ReportType.WEEKLY)
 
 data class ReportSection(val title: String, val rows: List<Pair<String, String>>)
 

@@ -8,38 +8,35 @@
 <meta name="description" content="차곡: 차량이 스스로 쌓는 운행 기록. 차량용 앱 개발 공모전 출품작입니다. 이 사이트는 앱이 만든 운행 보고서를 읽기 전용으로 보여 주는 정적 페이지입니다.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-  /* Same look as report.html: warm paper canvas, near-black ink, heavy sans, square everything. */
-  :root { --canvas:#f7f4ed; --paper:#fff; --ink:#111; --body:#1f1f1f; --btn:#111; --sub:#555; --line:#e4dfd3;
+  /* Same look as report.html (owner-app style): light grey canvas, white rounded cards, one navy card. No Hyundai marks. */
+  :root { --bg:#f4f5f7; --paper:#fff; --ink:#1a1a1a; --body:#333; --sub:#6b7280; --navy:#002c5f; --navy-sub:#b7c6dc; --line:#e5e7eb;
           --sans:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--canvas); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.6; word-break:keep-all; overflow-wrap:anywhere; -webkit-font-smoothing:antialiased; }
-  a { color:var(--ink); }
-  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 16px; }
-  header { border-bottom: 2px solid var(--ink); }
-  header .wrap { display:flex; justify-content:space-between; align-items:center; height:60px; }
-  .mark { color:var(--ink); font-size:18px; font-weight:800; letter-spacing:-0.02em; text-decoration:none; }
-  .mark span { font-weight:500; color:var(--sub); margin-left:8px; font-size:13px; letter-spacing:.08em; }
-  nav a { font-size:14px; font-weight:600; text-decoration:none; }
+  body { margin:0; background:var(--bg); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.6; word-break:keep-all; overflow-wrap:anywhere; -webkit-font-smoothing:antialiased; }
+  a { color:var(--navy); }
+  .wrap { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+  header { background:var(--paper); border-bottom:1px solid var(--line); }
+  header .wrap { display:flex; justify-content:space-between; align-items:center; height:56px; }
+  .mark { color:var(--navy); font-size:18px; font-weight:800; letter-spacing:-0.02em; text-decoration:none; }
+  .mark span { font-weight:500; color:var(--sub); margin-left:8px; font-size:12px; letter-spacing:.08em; }
+  nav a { font-size:14px; font-weight:600; text-decoration:none; color:var(--ink); }
   nav a:hover { text-decoration:underline; }
-  .hero { padding: 72px 0 64px; }
-  .eyebrow { font-size:13px; font-weight:700; letter-spacing:.08em; color:var(--sub); margin:0 0 20px; }
-  h1 { color:var(--ink); font-weight:800; font-size: clamp(44px, 10vw, 104px); line-height:1.02; letter-spacing:-0.05em; margin:0; }
-  .lede { color:var(--body); font-size:clamp(17px, 2.4vw, 21px); font-weight:500; line-height:1.5; margin:28px 0 36px; max-width: 32em; }
-  .btn { display:inline-block; background:var(--btn); color:#fff; text-decoration:none; font-size:15px; font-weight:700; padding:14px 24px; }
-  .btn:hover { background:#333; }
-  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); border-top:2px solid var(--ink); }
-  .cell { padding:24px 20px 28px 0; }
-  .cell + .cell { padding-left:20px; border-left:1px solid var(--line); }
-  .num { font-size:13px; font-weight:700; color:var(--sub); font-variant-numeric: tabular-nums; }
-  h2 { color:var(--ink); font-weight:800; font-size:20px; letter-spacing:-0.02em; margin:6px 0 8px; }
+  main { padding-top:16px; }
+  .hero { background:var(--navy); color:#fff; border-radius:16px; padding: 40px 28px 32px; }
+  .eyebrow { font-size:13px; font-weight:600; color:var(--navy-sub); margin:0 0 14px; }
+  h1 { color:#fff; font-weight:700; font-size: clamp(34px, 7vw, 60px); line-height:1.15; letter-spacing:-0.03em; margin:0; }
+  .lede { color:#dbe4f0; font-size:clamp(16px, 2.2vw, 19px); line-height:1.55; margin:18px 0 26px; max-width: 32em; }
+  .btn { display:inline-block; background:#fff; color:var(--navy); text-decoration:none; font-size:15px; font-weight:700; padding:12px 20px; border-radius:10px; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap:12px; margin-top:12px; }
+  .cell { background:var(--paper); border-radius:16px; padding:22px 20px; }
+  .num { display:inline-block; font-size:12px; font-weight:700; color:var(--navy); background:#e8eef6; border-radius:9999px; padding:2px 10px; }
+  h2 { color:var(--ink); font-weight:700; font-size:18px; margin:10px 0 6px; }
   .cell p, .cell li { font-size:15px; margin:0; color:var(--body); }
   .cell ul { margin:0; padding-left:18px; }
   .cell li + li { margin-top:4px; }
-  code { font-size:.9em; background:var(--paper); padding:1px 5px; }
-  footer { border-top:1px solid var(--line); margin-top:48px; }
-  footer .wrap { padding-top:20px; padding-bottom:32px; display:flex; gap:20px; font-size:13px; color:var(--sub); }
+  code { font-size:.9em; background:#f1f3f6; padding:1px 5px; border-radius:4px; }
+  footer .wrap { padding-top:28px; padding-bottom:36px; display:flex; gap:20px; font-size:13px; color:var(--sub); }
   footer a { color:var(--sub); }
-  @media (max-width: 600px) { .cell + .cell { padding-left:0; border-left:0; border-top:1px solid var(--line); } }
 </style>
 </head>
 <body>
@@ -67,7 +64,7 @@
     <div class="cell">
       <div class="num">02</div>
       <h2>데이터는 어디에</h2>
-      <p>보고서 내용은 링크 주소의 <code>#</code> 뒷부분에만 들어 있고 브라우저 안에서만 풀립니다. <code>#</code> 뒷부분은 서버로 전송되지 않습니다.</p>
+      <p>보고서 내용은 링크 주소의 <code>#</code> 뒷부분에만 들어 있고 브라우저 안에서만 풀립니다. <code>#</code> 뒷부분은 이 사이트 서버로 전송되지 않습니다. 경로 지도의 바탕은 화면에 보이는 지역만 OpenStreetMap에서 받아옵니다.</p>
     </div>
     <div class="cell">
       <div class="num">03</div>

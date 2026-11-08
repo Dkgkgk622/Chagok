@@ -213,13 +213,21 @@ object RouteModel {
         val fit = View((g.minX + g.maxX) / 2, (g.minY + g.maxY) / 2, fitMpp, partial = false)
         val perMin = g.perMinM
         if (whole || perMin == null || marks.isEmpty()) return fit
-        val capMpp = maxOf(DOTS_ACROSS * perMin / (w - 2 * pad), floor)
+        val capMpp = maxOf(DOTS_ACROSS * perMin / w, floor) // 6.5 steps across the whole visible width
         if (fitMpp <= capMpp) return fit
-        // Centre a few minutes after the start so the road leads into the screen from the beginning.
-        val byTime = marks.sortedBy { it.timeMs }
-        val t = byTime.first().timeMs + (DOTS_ACROSS / 2 * 60_000).toLong()
-        val c = byTime.firstOrNull { it.timeMs >= t } ?: byTime.last()
-        return View(g.x(c.lon), g.y(c.lat), capMpp, partial = true)
+        // Put the start just inside the screen edge, on the side the road leaves from, so the road runs across
+        // the whole screen: direction = start -> where the road is half a screen later. Same as docs/report.html.
+        val line = g.line.ifEmpty { marks.sortedBy { it.timeMs }.map { g.x(it.lon) to g.y(it.lat) } }
+        val s0 = line.first()
+        val half = w / 2 * capMpp
+        val a = line.firstOrNull { kotlin.math.hypot(it.first - s0.first, it.second - s0.second) >= half } ?: line.last()
+        val len = kotlin.math.hypot(a.first - s0.first, a.second - s0.second)
+        if (len == 0.0) return View(s0.first, s0.second, capMpp, partial = true)
+        val ux = (a.first - s0.first) / len; val uy = (a.second - s0.second) / len
+        val toEdge = minOf(if (ux != 0.0) w / 2 / kotlin.math.abs(ux) else Double.MAX_VALUE,
+            if (uy != 0.0) h / 2 / kotlin.math.abs(uy) else Double.MAX_VALUE) // px, centre -> edge
+        val reach = maxOf(0.0, toEdge - 1.5 * pad) * capMpp // start ~1.5 padding inside the edge
+        return View(s0.first + ux * reach, s0.second + uy * reach, capMpp, partial = true)
     }
 
     /** Lat/lon to screen pixels (x right, y down) for one [view]. */
@@ -238,9 +246,31 @@ object RouteModel {
     /** 1-minute stops: bigger ring so an accel/brake ring at the same spot stays visible inside. */
     const val DWELL_RING_PX = 22f
 
+    /** Zoomed out, minute dots closer than this would merge into a dotted line: later ones are not drawn. */
+    const val DOT_MIN_GAP_PX = 24f
+
+    /** The 1-minute dots actually drawn for [proj] (thinned when zoomed out; the last one always stays). */
+    fun drawnMinutes(marks: List<RouteMark>, proj: Projection): List<RouteMark> {
+        val minutes = marks.filter { it.kind == RouteMark.Kind.MINUTE }
+        var lastX = Float.NaN; var lastY = Float.NaN
+        return minutes.filterIndexed { i, m ->
+            val x = proj.x(m.lon); val y = proj.y(m.lat)
+            val keep = lastX.isNaN() || kotlin.math.hypot(x - lastX, y - lastY) >= DOT_MIN_GAP_PX || i == minutes.lastIndex
+            if (keep) { lastX = x; lastY = y }
+            keep
+        }
+    }
+
+    /**
+     * What a tap can pick: the drawn minute dots, events and stops. Not the 15-second points or the road
+     * between dots: zoomed in, "some spots work and some don't" was worse than "only the dots work" (Nov 2026).
+     */
+    fun tappable(marks: List<RouteMark>, proj: Projection): List<RouteMark> =
+        drawnMinutes(marks, proj) + marks.filter { it.kind == RouteMark.Kind.EVENT || it.kind == RouteMark.Kind.DWELL }
+
     fun nearest(marks: List<RouteMark>, proj: Projection, tx: Float, ty: Float, maxPx: Float): RouteMark? {
-        // Events and stops win over plain points when they are close to the finger.
-        val ranked = marks.map { m ->
+        // Events and stops win over minute dots when they are close to the finger. Plain points never.
+        val ranked = marks.filter { it.kind != RouteMark.Kind.POINT }.map { m ->
             val dx = proj.x(m.lon) - tx; val dy = proj.y(m.lat) - ty
             val center = kotlin.math.sqrt(dx * dx + dy * dy)
             // A stop is a ring: touching the ring picks it, touching the middle picks what is inside.

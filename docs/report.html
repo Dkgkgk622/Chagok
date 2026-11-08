@@ -7,71 +7,74 @@
 <meta name="description" content="차곡 앱(차량용 앱 개발 공모전 출품작)이 만든 운행 보고서를 읽기 전용으로 보여 주는 정적 페이지입니다. 입력 양식이나 로그인이 없습니다.">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
-  /* Modern and square: warm paper canvas, near-black ink, heavy sans headings, no rounded corners
-     except the round map dots. Chromatic colour only where it carries data (map events, layers). */
-  :root { --canvas:#f7f4ed; --paper:#fff; --ink:#111; --body:#1f1f1f; --btn:#111; --sub:#555; --line:#e4dfd3;
+  /* In the style of Hyundai's owner app: light grey canvas, white rounded cards, one deep navy card on top,
+     navy buttons. No Hyundai logo or names (contest entry). Chromatic colour otherwise only for map data. */
+  :root { --bg:#f4f5f7; --paper:#fff; --ink:#1a1a1a; --body:#333; --sub:#6b7280; --navy:#002c5f; --navy-sub:#b7c6dc;
+          --tint:#e8eef6; --line:#e5e7eb; --inset:#f7f8fa;
           --sans:"Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", "Segoe UI", sans-serif; }
   * { box-sizing: border-box; }
-  body { margin:0; background:var(--canvas); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.55; word-break:keep-all; overflow-wrap:anywhere; -webkit-font-smoothing:antialiased; }
-  main { max-width: 760px; margin: 0 auto; padding: 28px 16px 56px; }
-  a { color: var(--ink); font-weight: 600; text-underline-offset: 3px; }
-  .brand { color: var(--ink); font-size: 13px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
-  h1 { color: var(--ink); font-weight: 800; font-size: clamp(30px, 7vw, 44px); line-height: 1.1; letter-spacing: -0.035em; margin: 20px 0 8px; }
-  .period { color: var(--sub); font-size: 15px; font-weight: 500; }
-  section { background: var(--paper); padding: 20px 18px; margin-top: 16px; border-top: 3px solid var(--ink); }
-  h2 { color: var(--ink); font-weight: 800; font-size: 18px; letter-spacing: -0.02em; margin: 0 0 12px; }
-  .row { display:flex; justify-content:space-between; gap:12px; padding:10px 0; border-top:1px solid var(--line); font-size:15px; }
+  body { margin:0; background:var(--bg); color:var(--body); font-family:var(--sans); font-size:16px; line-height:1.55; word-break:keep-all; overflow-wrap:anywhere; -webkit-font-smoothing:antialiased; }
+  main { max-width: 760px; margin: 0 auto; padding: 16px 16px 56px; }
+  a { color: var(--navy); font-weight: 600; text-underline-offset: 3px; }
+  .hero { background: var(--navy); color:#fff; border-radius: 16px; padding: 22px 20px 20px; }
+  .hero .brand { color: var(--navy-sub); font-size: 13px; font-weight: 600; }
+  .hero h1 { color:#fff; font-weight: 700; font-size: clamp(24px, 6vw, 32px); line-height: 1.2; letter-spacing: -0.02em; margin: 6px 0 4px; }
+  .hero .period { color: var(--navy-sub); }
+  .period { color: var(--sub); font-size: 14px; font-weight: 500; }
+  main > .period { margin: 14px 4px; }
+  section { background: var(--paper); border-radius: 16px; padding: 20px 18px; margin-top: 12px; }
+  h2 { color: var(--ink); font-weight: 700; font-size: 17px; letter-spacing: -0.01em; margin: 0 0 10px; }
+  .row { display:flex; justify-content:space-between; gap:12px; padding:11px 0; border-top:1px solid var(--line); font-size:15px; }
   .row:first-of-type { border-top:none; }
-  .row span:first-child { color: var(--sub); font-weight: 500; }
-  .row span:last-child { color: var(--ink); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+  .row span:first-child { color: var(--sub); }
+  .row span:last-child { color: var(--ink); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
   .table-wrap { overflow-x: auto; }
   table { width:100%; border-collapse: collapse; font-size: 13px; min-width: 760px; font-variant-numeric: tabular-nums; }
   th, td { padding: 9px 6px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
   th:first-child, td:first-child, th:nth-child(2), td:nth-child(2), th:last-child, td:last-child { text-align: left; }
-  th { color: var(--ink); font-weight: 700; border-bottom: 2px solid var(--ink); }
+  th { color: var(--sub); font-weight: 600; background: var(--inset); }
   .notes { color: var(--sub); font-size: 13px; }
   .notes li { margin: 4px 0; }
-  .actions { display:flex; gap:8px; margin-top:20px; }
+  .actions { display:flex; gap:8px; margin-top:16px; }
   button { font-family: var(--sans); }
-  .actions button { flex:1; border:0; border-radius:0; padding: 14px 20px; font-size: 15px; font-weight: 700; background: var(--btn); color: #fff; cursor:pointer; }
-  .about { color: var(--sub); font-size: 13px; margin-top: 40px; padding-top: 12px; border-top: 1px solid var(--line); }
-  #map, #mapfb { width:100%; height:420px; background:#ece7dc; overflow:hidden; position:relative; }
+  .actions button { flex:1; border:0; border-radius:10px; padding: 14px 20px; font-size: 15px; font-weight: 700; background: var(--navy); color: #fff; cursor:pointer; }
+  .about { color: var(--sub); font-size: 13px; margin: 28px 4px 0; }
+  #map, #mapfb { width:100%; height:420px; background:#eef0f3; overflow:hidden; position:relative; border-radius:12px; }
   #mapfb svg { width:100%; height:100%; display:block; touch-action:none; cursor:grab; }
   .mapwrap { position:relative; }
-  .viewbtn { position:absolute; top:10px; right:10px; z-index:5; border:0; border-radius:0; background:var(--btn); color:#fff; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; }
-  .legend { display:flex; flex-wrap:wrap; gap:10px 14px; font-size:13px; font-weight:500; color:var(--sub); margin:0 0 10px; }
+  .osm-tiles { filter: grayscale(0.85) contrast(0.95) brightness(1.03); }
+  .seltip { width:0 !important; height:0 !important; border-left:11px solid transparent; border-right:11px solid transparent; border-top:20px solid var(--navy); background:none; filter: drop-shadow(0 0 1px #fff); }
+  .leaflet-container { font-family: var(--sans); background:#eef0f3; }
+  .leaflet-control-zoom a { color: var(--navy); }
+  .leaflet-control-attribution a { color: var(--navy); }
+  .viewbtn { position:absolute; top:10px; right:10px; z-index:1000; border:0; border-radius:8px; background:var(--navy); color:#fff; padding:8px 14px; font-size:13px; font-weight:700; cursor:pointer; box-shadow:0 1px 4px rgba(0,0,0,.2); }
+  .legend { display:flex; flex-wrap:wrap; gap:10px 14px; font-size:13px; color:var(--sub); margin:0 0 10px; }
   .legend i { display:inline-block; width:12px; height:12px; border-radius:50%; margin-right:5px; vertical-align:-1px; }
   .dot { position:relative; width:22px; height:22px; border-radius:50%; border:3px solid #fff; box-shadow:0 0 0 1px rgba(0,0,0,.25); cursor:pointer; }
 
   .dot.ring { width:22px; height:22px; background:transparent !important; border:5px solid #0891b2; box-shadow:0 0 0 2px #fff, inset 0 0 0 2px #fff; }
   .dot.ring.stop { width:36px; height:36px; } /* 1-minute stop: bigger, an event at the same spot shows inside */
-  .dot.min { width:10px; height:10px; border:0; background:#fff; box-shadow:0 0 0 2px #4a4640; }
+  .dot.min { width:10px; height:10px; border:0; background:#fff; box-shadow:0 0 0 2px #3b4352; }
   .layers { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 12px; }
-  .layers button { border:1.5px solid var(--ink); border-radius:0; background:var(--paper); color:var(--ink); padding:7px 12px; font-size:14px; font-weight:600; cursor:pointer; }
-  .layers button.on { background:var(--btn); color:#fff; }
-  .layers button i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#d6d0c4; }
+  .layers button { border:1px solid var(--line); border-radius:9999px; background:var(--paper); color:var(--ink); padding:7px 13px; font-size:14px; font-weight:600; cursor:pointer; }
+  .layers button.on { background:var(--navy); border-color:var(--navy); color:#fff; }
+  .layers button i { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#c9ced6; }
   #info { margin-top:12px; }
   #info .hint { color:var(--sub); font-size:14px; }
   section > .hint { color:var(--sub); font-size:14px; margin:0 0 8px; }
-  #rv { width:100%; height:240px; margin-top:10px; display:none; }
   .rvmsg { color:var(--sub); font-size:13px; margin-top:8px; }
-  @media print { .actions, .layers, .viewbtn { display:none; } body, section { background:#fff; } }
+  @media print { .actions, .layers, .viewbtn { display:none; } body, section { background:#fff; } .hero { background:#fff; color:#000; border:1px solid #ccc; } .hero h1, .hero .brand, .hero .period { color:#000; } }
 </style>
 </head>
 <body>
 <main id="app">
-  <div class="brand">차곡</div>
-  <h1>차곡 운행 보고서 보기</h1>
+  <header class="hero"><div class="brand">차곡</div>
+  <h1>차곡 운행 보고서 보기</h1></header>
   <p class="period">차량용 앱 '차곡'이 만든 운행 보고서(주간 요약, 정비용, 차 이력, 운행기록부, 경로)를 읽기 전용으로 보여 주는 페이지입니다.
     보고서 내용은 링크 주소에 들어 있고, 이 페이지는 그것을 화면에 표시하기만 합니다. 로그인, 입력 양식, 결제, 파일 내려받기가 없습니다.</p>
   <p class="about"><a href="./">소개</a> · <a href="https://github.com/Dkgkgk622/Chagok">소스 코드</a></p>
 </main>
 <script>
-// Kakao Maps JavaScript key (Kakao Developers > 내 애플리케이션 > 앱 키 > JavaScript 키).
-// The page's address (https://dkgkgk622.github.io) must be registered under 플랫폼 > Web.
-// Without a key the route is drawn as a simple picture (no map tiles, address or road view).
-const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY';
-
 (async function () {
   const app = document.getElementById('app');
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -80,11 +83,12 @@ const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY';
   // Wording kept plain on purpose: Safe Browsing flagged this page once (Nov 2026), so no brand names,
   // no "scan again / update your browser" instructions and no copy-to-system actions on the page.
   const ABOUT = '<p class="about">차곡은 차량용 앱 개발 공모전 출품작입니다. ' +
-    '이 페이지는 읽기 전용이며, 보고서 데이터는 주소의 # 뒤에만 있어 서버로 전송되지 않습니다. ' +
+    '이 페이지는 읽기 전용이며, 보고서 데이터는 주소의 # 뒤에만 있어 이 사이트 서버로 전송되지 않습니다. ' +
+    '경로 지도의 바탕은 화면에 보이는 지역만 OpenStreetMap에서 받아옵니다. ' +
     '<a href="./">소개</a> · <a href="https://github.com/Dkgkgk622/Chagok">소스 코드</a></p>';
 
   function fail(msg) {
-    app.innerHTML = '<div class="brand">차곡</div><h1>보고서를 표시하지 못했습니다</h1><p class="period">' + esc(msg) + '</p>' + ABOUT;
+    app.innerHTML = '<header class="hero"><div class="brand">차곡</div><h1>보고서를 표시하지 못했습니다</h1></header><p class="period">' + esc(msg) + '</p>' + ABOUT;
   }
 
   const hash = location.hash.slice(1);
@@ -104,9 +108,9 @@ const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY';
   }
 
   const created = new Date(report.created).toLocaleString('ko-KR');
-  let html = '<div class="brand">차곡 · 차량이 자동으로 기록한 데이터</div>' +
+  let html = '<header class="hero"><div class="brand">차곡 · 차량이 자동으로 기록한 데이터</div>' +
     '<h1>' + esc(report.title) + '</h1>' +
-    '<div class="period">' + esc(report.period) + ' · 생성 ' + esc(created) + '</div>';
+    '<div class="period">' + esc(report.period) + ' · 생성 ' + esc(created) + '</div></header>';
 
   let route = null;
   const hideNote = report.route && report.route.h
@@ -117,13 +121,13 @@ const KAKAO_JS_KEY = 'YOUR_KAKAO_JS_KEY';
   if (report.route && report.route.b) {
     route = decodeRoute(report.route);
     html += '<section><h2>경로</h2>' + hideNote + '<div class="legend">' +
-      '<span><i style="background:#fff;box-shadow:0 0 0 2px #4a4640"></i>' + (route.iv >= 120 ? Math.round(route.iv / 60) + '분' : '1분') + '마다 위치</span>' +
+      '<span><i style="background:#fff;box-shadow:0 0 0 2px #3b4352"></i>' + (route.iv >= 120 ? Math.round(route.iv / 60) + '분' : '1분') + '마다 위치</span>' +
       '<span><i style="background:#7c3aed"></i>과속</span></div>' +
       '<div class="layers">' + Object.entries(LAYERS).map(([k, l]) =>
         '<button data-layer="' + k + '"><i></i>' + l.label + '</button>').join('') + '</div>' +
       '<div class="mapwrap"><div id="map"></div><button class="viewbtn" id="viewbtn" style="display:none"></button></div>' +
-      '<p class="rvmsg" id="viewhint"></p><div id="info"><p class="hint">경로의 점이나 표시를 누르면 그때의 시각·주소·속도·제한속도와 주변 사진이 나와요.</p></div>' +
-      '<div id="rv"></div></section>';
+      '<p class="rvmsg" id="viewhint"></p><div id="info"><p class="hint">흰 점(1분마다)이나 표시를 누르면 그때의 시각·속도·제한속도가 나와요.</p></div>' +
+      '</section>';
   }
 
   // Sections (for a route report they come under the map).
@@ -228,18 +232,34 @@ function decodeRoute(r) {
  * visible mark — a recorded value, never one estimated between two records.
  * xy: mark -> {x, y} in the same units as tap; tolerances in those units.
  */
-function pickMark(tap, route, xy, markTol, lineTol) {
-  const vis = route.all.filter(visible);
+/**
+ * Only what is drawn can be picked: the minute dots on screen (after thinning), events and stops.
+ * The road between dots has no recorded value, so tapping it picks nothing (decided Nov 2026: zoomed in,
+ * "some spots work, some don't" was worse than "only the dots work").
+ * Events and stops win over a minute dot at almost the same distance.
+ */
+const TAP_PX = 28;
+function pickMark(tap, candidates, xy) {
   let best = null, bestD = Infinity;
-  vis.forEach(m => { const p = xy(m); const d = Math.hypot(p.x - tap.x, p.y - tap.y); if (d < bestD) { bestD = d; best = m; } });
-  if (best && bestD <= markTol) return best;
-  const pts = route.line.map(xy);
-  for (let i = 1; i < pts.length; i++) {
-    const a = pts[i - 1], b = pts[i], dx = b.x - a.x, dy = b.y - a.y, len2 = dx * dx + dy * dy;
-    const u = len2 ? Math.max(0, Math.min(1, ((tap.x - a.x) * dx + (tap.y - a.y) * dy) / len2)) : 0;
-    if (Math.hypot(a.x + u * dx - tap.x, a.y + u * dy - tap.y) <= lineTol) return best;
-  }
-  return null;
+  candidates.forEach(m => {
+    const p = xy(m), d = Math.hypot(p.x - tap.x, p.y - tap.y);
+    const score = d - (m.kind === 'event' ? 8 : m.kind === 'dwell' ? 6 : 0);
+    if (d <= TAP_PX && score < bestD) { bestD = score; best = m; }
+  });
+  return best;
+}
+
+/** Tap = press and release within 10 px and 600 ms (map libraries drop clicks after a 3 px finger wobble). */
+function onTap(el, skip, fn) {
+  let start = null;
+  el.addEventListener('pointerdown', e => { start = e.isPrimary && !skip(e.target) ? { x: e.clientX, y: e.clientY, t: Date.now() } : null; }, true);
+  el.addEventListener('pointerup', e => {
+    if (!start || !e.isPrimary) return;
+    const ok = Math.hypot(e.clientX - start.x, e.clientY - start.y) <= 10 && Date.now() - start.t <= 600;
+    start = null;
+    if (ok) { const r = el.getBoundingClientRect(); fn(e.clientX - r.left, e.clientY - r.top); }
+  }, true);
+  el.addEventListener('pointercancel', () => { start = null; }, true);
 }
 
 // Accel, brake and 1-minute stops are hollow rings; overspeed and route points are filled.
@@ -248,12 +268,11 @@ function colorOf(m) { return m.kind === 'event' ? EVENT[m.code][1] : m.kind === 
 function pad2(n) { return String(n).padStart(2, '0'); }
 function when(t) { const d = new Date(t); return (d.getMonth() + 1) + '.' + d.getDate() + ' ' + pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds()); }
 
-function showInfo(m, address) {
+function showInfo(m) {
   const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const title = m.kind === 'event' ? EVENT[m.code][0] : m.kind === 'dwell' ? '1분 이상 정차' : '경로 지점';
   const rows = [
     [m.code === 'O' ? '과속 시작' : '시각', when(m.t)],
-    ...(address ? [['주소', address]] : []),
     [m.code === 'O' ? '최고 속도 (이 지점)' : '속도', m.speed != null ? m.speed + ' km/h' : '-'],
     ['제한속도', m.limit != null ? m.limit + ' km/h' : '정보 없음'],
   ];
@@ -262,17 +281,138 @@ function showInfo(m, address) {
   if (m.kind === 'dwell') rows.push(['정차 시간', Math.floor(m.len / 60) + '분 ' + (m.len % 60) + '초']);
   document.getElementById('info').innerHTML = '<h2>' + esc(title) + '</h2>' +
     rows.map(([k, v]) => '<div class="row"><span>' + esc(k) + '</span><span>' + esc(v) + '</span></div>').join('') +
-    '<div class="rvmsg" id="rvmsg"></div>';
+    '';
 }
 
 function showRoute(route) {
   setupLayerButtons();
-  if (!KAKAO_JS_KEY || KAKAO_JS_KEY.startsWith('YOUR_')) return drawFallback(route, '지도 키가 설정되지 않아 간단한 그림으로 보여요.');
-  const sdk = document.createElement('script');
-  sdk.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(KAKAO_JS_KEY) + '&autoload=false&libraries=services';
-  sdk.onload = () => { try { kakao.maps.load(() => drawKakao(route)); } catch (e) { drawFallback(route, '지도를 불러오지 못해 간단한 그림으로 보여요.'); } };
-  sdk.onerror = () => drawFallback(route, '지도를 불러오지 못해 간단한 그림으로 보여요. (인터넷 연결 또는 지도 키 확인)');
-  document.head.appendChild(sdk);
+  loadLeaflet(route);
+}
+
+// ---------------- free base map (no key) ----------------
+// OpenStreetMap tiles drawn grey (CSS filter on the tile layer) under the route. OSM tile policy:
+// visible attribution, normal viewport loading only, no prefetch/offline. If Leaflet cannot load
+// (offline, blocked CDN) the plain drawing (drawFallback) is used instead.
+const LEAFLET = 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/';
+function loadLeaflet(route) {
+  const css = document.createElement('link');
+  css.rel = 'stylesheet'; css.href = LEAFLET + 'leaflet.css';
+  document.head.appendChild(css);
+  const js = document.createElement('script');
+  js.src = LEAFLET + 'leaflet.js';
+  js.onload = () => {
+    try { drawLeaflet(route); } catch (e) {
+      console.error(e);
+      // Start the plain drawing on a clean element, not on top of a half-built map.
+      const note = document.getElementById('basenote'); if (note) note.remove();
+      const old = document.getElementById('map'), fresh = document.createElement('div');
+      fresh.id = 'map'; old.replaceWith(fresh);
+      drawFallback(route, '지도를 불러오지 못해 간단한 그림으로 보여요.');
+    }
+  };
+  js.onerror = () => drawFallback(route, '지도를 불러오지 못해 간단한 그림으로 보여요. (인터넷 연결 확인)');
+  document.head.appendChild(js);
+}
+
+function drawLeaflet(route) {
+  const el = document.getElementById('map');
+  document.getElementById('viewhint').insertAdjacentHTML('beforebegin',
+    '<p class="rvmsg" id="basenote">바탕 지도는 OpenStreetMap입니다. 경로의 점 사이는 직선이라 실제 도로와 조금 다를 수 있어요.</p>');
+  const g = measure(route);
+  const P = 24;
+  const size = () => ({ W: el.clientWidth || 360, H: el.clientHeight || 420 });
+  const LL = (x, y) => [g.lat0 + y / M_PER_DEG, g.lon0 + x / (M_PER_DEG * g.k)];
+  const XY = ll => ({ x: (ll.lng - g.lon0) * M_PER_DEG * g.k, y: (ll.lat - g.lat0) * M_PER_DEG });
+  // Web Mercator, 256 px tiles: metres per pixel at zoom z here, and the zoom for a given metres per pixel.
+  const mppAt = z => 156543.034 * g.k / Math.pow(2, z);
+  const zoomFor = mpp => Math.log2(156543.034 * g.k / mpp);
+  // Plain wheel scrolls the page; Ctrl+wheel (and trackpad pinch) zooms, handled below.
+  const map = L.map(el, { zoomSnap: 0.25, zoomDelta: 0.5, scrollWheelZoom: false, attributionControl: true });
+  map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom: 19, className: 'osm-tiles',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(map);
+  // A hard stop far out (a fling cannot run away); the real rule is keepRoute on every move, below.
+  const ext = Math.max(g.maxX - g.minX, g.maxY - g.minY, 2 * MIN_SPAN_M);
+  map.setMaxBounds([LL(g.minX - ext, g.minY - ext), LL(g.maxX + ext, g.maxY + ext)]);
+  map.options.maxBoundsViscosity = 1;
+
+  const { W: W0, H: H0 } = size();
+  const canClose = firstView(route, g, W0, H0, P, false).partial;
+  function show(whole) {
+    const { W, H } = size();
+    const v = firstView(route, g, W, H, P, whole);
+    // Partial view: nearest 0.25 zoom step (6.0-7.1 dots across). Whole route: round down so all of it fits.
+    const z = zoomFor(v.mpp), zz = Math.min(18, v.partial ? Math.round(z * 4) / 4 : Math.floor(z * 4) / 4);
+    map.setView(LL(v.cx, v.cy), zz, { animate: false });
+    map.setMinZoom(Math.min(zz, Math.floor(zoomFor(firstView(route, g, W, H, P, true).mpp) * 4) / 4) - 1);
+    if (canClose) setViewUi(v.partial, () => show(v.partial));
+  }
+  show(false);
+  // Never lose the road (same rule as the plain drawing and the car screen).
+  map.on('moveend', () => {
+    const { W, H } = size(), c = XY(map.getCenter()), mpp = mppAt(map.getZoom());
+    const k = keepRoute(route, { cx: c.x, cy: c.y, mpp }, W, H);
+    if (Math.hypot(k.cx - c.x, k.cy - c.y) / mpp > 1) map.panTo(LL(k.cx, k.cy));
+  });
+
+  // Road: white casing under a dark line so it reads on the grey map.
+  const line = route.line.map(m => [m.lat, m.lon]);
+  if (line.length > 1) {
+    L.polyline(line, { color: '#fff', weight: 11, opacity: 0.95, interactive: false }).addTo(map);
+    L.polyline(line, { color: '#3b4352', weight: 6, opacity: 0.95, interactive: false }).addTo(map);
+  }
+  const marks = L.layerGroup().addTo(map);
+  const items = [...route.points, ...route.dwells, ...route.events];
+  let selected = null;
+  const tip = L.divIcon({ className: 'seltip', iconSize: [22, 20], iconAnchor: [11, 20] });
+  let selMarker = null;
+  let drawn = []; // what can be tapped: exactly what render() drew
+  function render() {
+    marks.clearLayers();
+    drawn = [];
+    let lastDot = null; // zoomed out, minute dots closer than 20 px would merge into a dotted line: skip those
+    items.forEach(m => {
+      if (!visible(m)) return;
+      const p = map.latLngToContainerPoint([m.lat, m.lon]);
+      if (m.kind === 'point') {
+        if (lastDot && Math.hypot(p.x - lastDot.x, p.y - lastDot.y) < 20 && m !== route.points[route.points.length - 1]) return;
+        lastDot = p;
+        drawn.push(m);
+        L.circleMarker([m.lat, m.lon], { radius: 4, color: '#3b4352', weight: 2, fillColor: '#fff', fillOpacity: 1, interactive: false }).addTo(marks);
+      } else if (isRing(m)) {
+        drawn.push(m);
+        const r = m.kind === 'dwell' ? 15 : 9;
+        L.circleMarker([m.lat, m.lon], { radius: r, color: '#fff', weight: 7, fill: false, interactive: false }).addTo(marks);
+        L.circleMarker([m.lat, m.lon], { radius: r, color: colorOf(m), weight: 4, fill: false, interactive: false }).addTo(marks);
+      } else {
+        drawn.push(m);
+        L.circleMarker([m.lat, m.lon], { radius: 8, color: '#fff', weight: 3, fillColor: colorOf(m), fillOpacity: 1, interactive: false }).addTo(marks);
+      }
+    });
+    if (selMarker) selMarker.remove();
+    if (selected) selMarker = L.marker([selected.lat, selected.lon], { icon: tip, interactive: false, keyboard: false }).addTo(map);
+  }
+  map.on('zoomend', render);
+  onLayersChanged = render;
+  render();
+
+  onTap(el, t => !!t.closest('.leaflet-control, .viewbtn'), (x, y) => {
+    const best = pickMark({ x, y }, drawn, m => map.latLngToContainerPoint([m.lat, m.lon]));
+    if (best) { selected = best; showInfo(best); render(); }
+  });
+  // Ctrl+wheel / trackpad pinch: many small events, so add them up and zoom in 0.25 steps.
+  let wheelAcc = 0;
+  el.addEventListener('wheel', e => {
+    if (!e.ctrlKey) return;
+    e.preventDefault();
+    wheelAcc -= e.deltaY * 0.01;
+    const step = Math.trunc(wheelAcc * 4) / 4;
+    if (!step) return;
+    wheelAcc -= step;
+    map.setZoomAround(map.mouseEventToContainerPoint(e), map.getZoom() + step, { animate: false });
+  }, { passive: false });
 }
 
 // ---------------- first view ----------------
@@ -306,12 +446,21 @@ function firstView(route, g, W, H, P, whole) {
   const fitMpp = Math.max((g.maxX - g.minX) / (W - 2 * P), (g.maxY - g.minY) / (H - 2 * P), floor);
   const fit = { cx: (g.minX + g.maxX) / 2, cy: (g.minY + g.maxY) / 2, mpp: fitMpp, partial: false };
   if (whole || !g.perMin) return fit;
-  const capMpp = Math.max(DOTS_ACROSS * g.perMin / (W - 2 * P), floor);
+  // 6.5 dots across the whole visible width. A long route thinned for the QR has a dot every iv seconds
+  // (2, 4 ... minutes), so scale by the dot spacing, not by the minute: the reader counts dots.
+  const perDot = g.perMin * Math.max(1, (route.iv || 60) / 60);
+  const capMpp = Math.max(DOTS_ACROSS * perDot / W, floor);
   if (fitMpp <= capMpp) return fit; // short enough: the whole route already has well-spaced dots
-  // Centre a few minutes after the start so the road leads into the screen from the beginning.
-  const t = route.line[0].t + DOTS_ACROSS / 2 * 60000;
-  const c = route.line.find(m => m.t >= t) || route.line[route.line.length - 1];
-  return { cx: c.x, cy: c.y, mpp: capMpp, partial: true, fitMpp };
+  // Put the start just inside the screen edge, on the side the road leaves from, so the road runs
+  // across the whole screen: direction = start → where the road is half a screen later.
+  const s0 = route.line[0], half = W / 2 * capMpp;
+  const a = route.line.find(m => Math.hypot(m.x - s0.x, m.y - s0.y) >= half) || route.line[route.line.length - 1];
+  const len = Math.hypot(a.x - s0.x, a.y - s0.y);
+  if (!len) return { cx: s0.x, cy: s0.y, mpp: capMpp, partial: true, fitMpp };
+  const ux = (a.x - s0.x) / len, uy = (a.y - s0.y) / len;
+  const toEdge = Math.min(ux ? W / 2 / Math.abs(ux) : Infinity, uy ? H / 2 / Math.abs(uy) : Infinity); // px, centre → edge
+  const reach = Math.max(0, toEdge - 1.5 * P) * capMpp; // start ~1.5 padding inside the edge (room for zoom rounding)
+  return { cx: s0.x + ux * reach, cy: s0.y + uy * reach, mpp: capMpp, partial: true, fitMpp };
 }
 
 /**
@@ -346,89 +495,8 @@ function setViewUi(partial, onToggle) {
   hint.textContent = partial ? '경로가 길어 처음 부분부터 보여요. 끌어서 옮기고, 두 손가락(PC는 Ctrl+휠)으로 확대·축소할 수 있어요.' : '';
 }
 
-function drawKakao(route) {
-  const K = kakao.maps;
-  const el = document.getElementById('map');
-  // Wheel scrolls the page, not the map (the map is one block in a long report); zoom with pinch or the +/- control.
-  const map = new K.Map(el, { center: new K.LatLng(route.all[0].lat, route.all[0].lon), level: 5, scrollwheel: false });
-  map.addControl(new K.ZoomControl(), K.ControlPosition.RIGHT);
-  const g = measure(route);
-  const toLL = (x, y) => new K.LatLng(g.lat0 + y / M_PER_DEG, g.lon0 + x / (M_PER_DEG * g.k));
-  const W = el.clientWidth, H = el.clientHeight, P = 24;
-  const canClose = firstView(route, g, W, H, P, false).partial;
-  function show(whole) {
-    const v = firstView(route, g, W, H, P, whole);
-    const hw = v.mpp * (W - 2 * P) / 2, hh = v.mpp * (H - 2 * P) / 2;
-    const b = new K.LatLngBounds(toLL(v.cx - hw, v.cy - hh), toLL(v.cx + hw, v.cy + hh));
-    map.setBounds(b);
-    if (map.getLevel() < 3) map.setLevel(3); // one spot only (very short trip): do not zoom in past street level
-    if (v.partial) {
-      // Kakao zoom comes in steps of 2x: if the step left the dots too close, go one step in, same centre.
-      const proj = map.getProjection(), a = proj.containerPointFromCoords(toLL(v.cx, v.cy)),
-        c = proj.containerPointFromCoords(toLL(v.cx + g.perMin, v.cy));
-      if (Math.abs(c.x - a.x) < (W - 2 * P) / 9 && map.getLevel() > 3) { map.setLevel(map.getLevel() - 1); map.setCenter(toLL(v.cx, v.cy)); }
-    }
-    if (canClose) setViewUi(v.partial, () => show(v.partial));
-  }
-  show(false);
-  if (route.line.length > 1) {
-    new K.Polyline({ map, path: route.line.map(p => new K.LatLng(p.lat, p.lon)), strokeWeight: 11, strokeColor: '#4a4640', strokeOpacity: 0.9 });
-  }
-  const geocoder = new K.services.Geocoder();
-  const rvClient = new K.RoadviewClient();
-  const rvEl = document.getElementById('rv');
-  let roadview = null;
-  // Selected place: a downward triangle whose tip sits on the centre of the road.
-  const tri = document.createElement('div');
-  tri.style.cssText = 'width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;' +
-    'border-top:20px solid #191919;filter:drop-shadow(0 0 1px #fff);pointer-events:none';
-  const selMark = new K.CustomOverlay({ content: tri, xAnchor: 0.5, yAnchor: 1, zIndex: 10 });
-
-  function select(m) {
-    selMark.setPosition(new K.LatLng(m.lat, m.lon));
-    selMark.setMap(map);
-    showInfo(m);
-    geocoder.coord2Address(m.lon, m.lat, (res, status) => {
-      if (status === K.services.Status.OK && res[0]) {
-        const a = res[0].road_address ? res[0].road_address.address_name : res[0].address.address_name;
-        showInfo(m, a);
-      }
-    });
-    const pos = new K.LatLng(m.lat, m.lon);
-    rvClient.getNearestPanoId(pos, 50, panoId => {
-      const msg = document.getElementById('rvmsg');
-      if (panoId === null) { rvEl.style.display = 'none'; if (msg) msg.textContent = '이 근처(50m)에는 로드뷰 사진이 없어요.'; return; }
-      rvEl.style.display = 'block';
-      if (!roadview) roadview = new K.Roadview(rvEl);
-      roadview.setPanoId(panoId, pos);
-      if (msg) msg.textContent = '아래는 이 지점 근처의 로드뷰 사진이에요 (촬영 시점은 운행 시점과 다릅니다).';
-    });
-  }
-
-  // Dots: white every minute; stops and events on top (optional layers start hidden).
-  const overlays = [...route.points, ...route.dwells, ...route.events].map(m => {
-    const dot = document.createElement('div');
-    dot.className = 'dot' + (m.kind === 'point' ? ' min' : isRing(m) ? ' ring' + (m.kind === 'dwell' ? ' stop' : '') : '');
-    if (isRing(m)) dot.style.borderColor = colorOf(m);
-    else if (m.kind !== 'point') dot.style.background = colorOf(m);
-    dot.title = when(m.t);
-    dot.addEventListener('click', e => { e.stopPropagation(); select(m); });
-    const ov = new K.CustomOverlay({ position: new K.LatLng(m.lat, m.lon), content: dot, xAnchor: 0.5, yAnchor: 0.5, clickable: true, zIndex: m.kind === 'event' ? 3 : m.kind === 'dwell' ? 2 : 1 });
-    return { m, ov };
-  });
-  const apply = () => overlays.forEach(({ m, ov }) => ov.setMap(visible(m) ? map : null));
-  onLayersChanged = apply; apply();
-
-  // Tapping the road line anywhere picks the nearest recorded place.
-  K.event.addListener(map, 'click', e => {
-    const proj = map.getProjection(), tap = proj.containerPointFromCoords(e.latLng);
-    const best = pickMark(tap, route, m => proj.containerPointFromCoords(new K.LatLng(m.lat, m.lon)), 40, 24);
-    if (best) select(best);
-  });
-}
-
 /**
- * No map key / offline: the same marks on a plain drawing, tappable, without address or road view.
+ * Map library not available (offline, blocked CDN): the same marks on a plain drawing, tappable.
  * Drawn in screen pixels (so dots keep their size) and redrawn on every move: drag to pan,
  * pinch or wheel to zoom.
  */
@@ -445,22 +513,25 @@ function drawFallback(route, message) {
   const canClose = v.partial;
   const maxMpp = firstView(route, g, W, H, P, true).mpp * 2, minMpp = 0.3;
   let selected = null;
+  let drawn = []; // what can be tapped: exactly what render() drew
   const X = m => W / 2 + (m.x - v.cx) / v.mpp, Y = m => H / 2 - (m.y - v.cy) / v.mpp;
 
   function render() {
     v = keepRoute(route, v, W, H);
     let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">';
-    if (route.line.length > 1) svg += '<polyline fill="none" stroke="#4a4640" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" points="' +
+    if (route.line.length > 1) svg += '<polyline fill="none" stroke="#3b4352" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" points="' +
       route.line.map(p => X(p).toFixed(1) + ',' + Y(p).toFixed(1)).join(' ') + '"/>';
     let lastDot = null; // zoomed far out, minute dots closer than 20 px would merge into a dotted line: skip those
+    drawn = [];
     items.forEach(m => {
       if (!visible(m)) return;
       const x = X(m), y = Y(m);
-      if (x < -40 || x > W + 40 || y < -40 || y > H + 40) return;
       if (m.kind === 'point') {
         if (lastDot && Math.hypot(x - lastDot.x, y - lastDot.y) < 20 && m !== route.points[route.points.length - 1]) return;
         lastDot = { x, y };
       }
+      if (x < -40 || x > W + 40 || y < -40 || y > H + 40) return;
+      drawn.push(m);
       const r = m.kind === 'point' ? 4 : m.kind === 'dwell' ? 15 : 9;
       if (isRing(m)) {
         svg += '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="' + r + '" fill="none" stroke="#fff" stroke-width="7"/>' +
@@ -472,7 +543,7 @@ function drawFallback(route, message) {
     });
     if (selected) { // downward triangle above the chosen place, tip on the centre of the road
       const x = X(selected), y = Y(selected);
-      svg += '<polygon points="' + x + ',' + y + ' ' + (x - 11) + ',' + (y - 21) + ' ' + (x + 11) + ',' + (y - 21) + '" fill="#191919" stroke="#fff" stroke-width="2"/>';
+      svg += '<polygon points="' + x + ',' + y + ' ' + (x - 11) + ',' + (y - 21) + ' ' + (x + 11) + ',' + (y - 21) + '" fill="#002c5f" stroke="#fff" stroke-width="2"/>';
     }
     el.innerHTML = svg + '</svg>';
   }
@@ -488,19 +559,19 @@ function drawFallback(route, message) {
     v = { ...v, mpp, cx: gx - (px - W / 2) * mpp, cy: gy + (py - H / 2) * mpp };
   }
   function tap(px, py) {
-    // Close to a mark: that mark; on the road line: the nearest visible mark (~24 px / ~16 px).
-    const best = pickMark({ x: px, y: py }, route, m => ({ x: X(m), y: Y(m) }), 24, 16);
+    // Only drawn dots, events and stops (pickMark).
+    const best = pickMark({ x: px, y: py }, drawn, m => ({ x: X(m), y: Y(m) }));
     if (best) { selected = best; showInfo(best); render(); }
   }
 
   const ptrs = new Map();
-  let moved = 0, last = null;
+  let moved = 0, last = null, down = null; // moved: farthest the finger got from where it went down (px)
   const local = e => { const r = el.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; };
   const pair = () => { const [a, b] = [...ptrs.values()]; return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, d: Math.hypot(a.x - b.x, a.y - b.y) }; };
   el.addEventListener('pointerdown', e => {
     el.setPointerCapture(e.pointerId);
     ptrs.set(e.pointerId, local(e));
-    if (ptrs.size === 1) moved = 0;
+    if (ptrs.size === 1) { moved = 0; down = local(e); }
     last = ptrs.size === 2 ? pair() : local(e);
   });
   el.addEventListener('pointermove', e => {
@@ -508,7 +579,7 @@ function drawFallback(route, message) {
     ptrs.set(e.pointerId, local(e));
     if (ptrs.size === 1) {
       const p = local(e), dx = p.x - last.x, dy = p.y - last.y;
-      moved += Math.abs(dx) + Math.abs(dy);
+      moved = Math.max(moved, Math.hypot(p.x - down.x, p.y - down.y));
       v = { ...v, cx: v.cx - dx * v.mpp, cy: v.cy + dy * v.mpp };
       last = p;
     } else if (ptrs.size === 2) {
@@ -524,7 +595,7 @@ function drawFallback(route, message) {
     if (!ptrs.has(e.pointerId)) return;
     const p = local(e);
     ptrs.delete(e.pointerId);
-    if (ptrs.size === 0 && moved < 8) tap(p.x, p.y);
+    if (ptrs.size === 0 && moved <= 10) tap(p.x, p.y); // same 10 px tap rule as onTap (base map)
     if (ptrs.size === 1) last = [...ptrs.values()][0];
   };
   el.addEventListener('pointerup', up);
