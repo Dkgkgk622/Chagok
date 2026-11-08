@@ -6,7 +6,7 @@
 |---|---|---|
 | L0 정적 점검 | `json_symmetry.py` | 저장(put)한 JSON 키와 불러오는(opt/get) 키가 1:1로 맞는지 |
 | L1 실컴파일 | (Gradle 캐시의 실제 jar로 kotlinc + Compose 플러그인) | 타입·시그니처·Compose 규칙 오류 0 |
-| L2 시나리오 | `BehaviorProof.kt` | 가상 주행(에뮬레이터 실측 로그 재현 포함)을 넣었을 때 트립·급가감속(구간당 1건)·과속·거리·경로·정차·놓친 운행·세무표·입력 이력·출발/도착 주변 가리기·경고등 기록과 정비 전후 비교가 기준대로 나오는지 (210개, 지도 첫 화면 범위(가로·대각선 도로)·끌기·확대·길 놓치지 않기·누를 수 있는 점·바탕 지도 상자 계산 포함) |
+| L2 시나리오 | `BehaviorProof.kt` | 가상 주행(에뮬레이터 실측 로그 재현 포함)을 넣었을 때 트립·급가감속(구간당 1건)·과속·거리·경로·정차·놓친 운행·세무표·입력 이력·출발/도착 주변 가리기·경고등 기록과 정비 전후 비교가 기준대로 나오는지 (211개, 지도 첫 화면 범위(가로·대각선 도로)·끌기·확대·길 놓치지 않기·누를 수 있는 점·바탕 지도 상자 계산 포함) |
 | L2 경로 왕복 | `RouteCodecProof.kt` + `jsonshim/` + `route_roundtrip.py` | 앱이 압축한 1시간 경로(초 단위가 아닌 시각)를 휴대폰 페이지의 해독기로 풀었을 때 시각 0.5초·위치 약 1m 이내, 속도·이벤트·정차가 그대로인지 (Chromium). `python3 route_roundtrip.py <RouteCodecProof 출력> ../docs/report.html` |
 | L2 운행기록부 왕복 | `TaxCodecProof.kt` + `tax_roundtrip.py` | 운행기록부 360행(해를 넘는 사업연도, 23시대 운행, 빈칸 행, 계기판 차이, 다른 사용자, 따옴표 든 비고)을 휴대폰 압축 형식으로 보냈을 때 휴대폰 페이지가 차 화면과 모든 칸을 똑같이 복원하는지. 휴대폰 시간대 3곳(서울·LA·키리티마티)에서 확인. `java -Duser.timezone=Asia/Seoul …TaxCodecProofKt > out.txt; python3 tax_roundtrip.py out.txt ../docs/report.html` |
 

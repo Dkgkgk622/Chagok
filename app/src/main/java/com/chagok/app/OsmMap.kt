@@ -65,6 +65,7 @@ object OsmMap {
             setMultiTouchControls(true)
             zoomController.setVisibility(CustomZoomButtonsController.Visibility.NEVER)
             isTilesScaledToDpi = true // street names readable on the car screen
+            tilesScaleFactor = 1.5f    // and 1.5x more on top (tried on the emulator: names were too small)
             isHorizontalMapRepetitionEnabled = false
             isVerticalMapRepetitionEnabled = false
             setMaxZoomLevel(19.0)
@@ -113,8 +114,9 @@ class RouteOverlay(
         if (line.size > 1) {
             val path = Path()
             line.forEachIndexed { i, m -> if (i == 0) path.moveTo(p.x(m.lon), p.y(m.lat)) else path.lineTo(p.x(m.lon), p.y(m.lat)) }
-            road.color = android.graphics.Color.WHITE; road.strokeWidth = 18f; c.drawPath(path, road)  // casing
-            road.color = roadColor; road.strokeWidth = 11f; c.drawPath(path, road)
+            // See-through, so the street name printed on the tile under the route stays readable.
+            road.color = android.graphics.Color.WHITE; road.alpha = 140; road.strokeWidth = 16f; c.drawPath(path, road) // casing
+            road.color = roadColor; road.alpha = 150; road.strokeWidth = 9f; c.drawPath(path, road)
         }
         fun circle(m: RouteMark, r: Float, color: Int, width: Float? = null) {
             val paint = if (width == null) fill else stroke.apply { strokeWidth = width }

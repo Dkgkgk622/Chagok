@@ -166,7 +166,7 @@ private object Palette {
     val accent = navy                 // buttons, selected chips, emphasised text
     val accentSoft = Color(0xFFE8EEF6) // unselected chips, soft buttons (navy tint)
     val btn = navy
-    val onNavySub = Color(0xFFB7C6DC)  // secondary text on the navy card
+    val onNavySub = Color(0xFFE8EEF6)  // secondary text on the navy card (near-white; grey-blue looked faint)
     val line = Color(0xFFE5E7EB)
     val inset = Color(0xFFF7F8FA)     // box inside a card
     val offFill = Color(0xFFF0F1F4)   // layer toggle when off
@@ -266,7 +266,7 @@ private fun ParkedScreen(
 @Composable
 private fun HomeTab(s: VehicleSnapshot, book: Logbook, actions: TripActions, onGoTrips: () -> Unit) {
     NavyCard {
-        Text("지금 차 상태", fontSize = 18.sp, color = Palette.onNavySub)
+        Text("지금 차 상태", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
         Spacer(Modifier.height(8.dp))
         KeyValue("기어", s.gear?.label ?: "확인 중", onNavy = true)
         KeyValue("누적 주행거리", s.odometerKm?.let { "%.1f km".format(it) } ?: "-", onNavy = true)
@@ -1167,8 +1167,11 @@ private fun NavyCard(content: @Composable () -> Unit) {
 @Composable
 private fun KeyValue(key: String, value: String, onNavy: Boolean = false) {
     Row(Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-        Text(key, modifier = Modifier.weight(1f), fontSize = 18.sp, color = if (onNavy) Palette.onNavySub else Palette.sub)
-        Text(value, fontSize = 18.sp, fontWeight = FontWeight.SemiBold, color = if (onNavy) Color.White else Palette.ink, textAlign = TextAlign.End)
+        // On navy, thin grey-blue text looked faint: medium-weight labels and bold values there.
+        Text(key, modifier = Modifier.weight(1f), fontSize = 18.sp, color = if (onNavy) Palette.onNavySub else Palette.sub,
+            fontWeight = if (onNavy) FontWeight.Medium else FontWeight.Normal)
+        Text(value, fontSize = 18.sp, fontWeight = if (onNavy) FontWeight.Bold else FontWeight.SemiBold,
+            color = if (onNavy) Color.White else Palette.ink, textAlign = TextAlign.End)
     }
 }
 

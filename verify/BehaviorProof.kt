@@ -380,14 +380,33 @@ fun main() {
         r.addDemoTrip(System.currentTimeMillis())
         val t = store.saved.closedTrips.single()
         check("시연용 표시", t.demo)
-        check("경로 점 37개(15초 간격, 9분)", t.track.size == 37 && t.track.zipWithNext().all { (a, b) -> b.timeMs - a.timeMs == 15_000L })
+        // 37 samples every 15 s (9 min) plus the road's own corners in between, all in time order.
+        val samples = t.track.filter { (it.timeMs - t.startMs) % 15_000L == 0L }
+        check("경로: 15초 표본 37개 + 사이의 도로 꺾임점, 시간순", samples.size == 37 && t.track.size > 37 &&
+            t.track.zipWithNext().all { (a, b) -> b.timeMs > a.timeMs }) { "${samples.size}/${t.track.size}" }
+        // Every point lies on the routed road polyline (OSRM on OSM data), within 2 m (5-decimal rounding).
+        val road = t.track.map { it.lat to it.lon }
+        fun offRoadM(p: Pair<Double, Double>): Double {
+            val k = Math.cos(Math.toRadians(37.4)); var best = Double.MAX_VALUE
+            for (i in 1 until road.size) {
+                val ax = road[i - 1].second * 111_320 * k; val ay = road[i - 1].first * 111_320
+                val bx = road[i].second * 111_320 * k; val by = road[i].first * 111_320
+                val px = p.second * 111_320 * k; val py = p.first * 111_320
+                val dx = bx - ax; val dy = by - ay; val l = dx * dx + dy * dy
+                val u = if (l > 0) (((px - ax) * dx + (py - ay) * dy) / l).coerceIn(0.0, 1.0) else 0.0
+                best = minOf(best, Math.hypot(ax + u * dx - px, ay + u * dy - py))
+            }
+            return best
+        }
+        check("이벤트·정차 위치가 모두 도로 위 (2m 이내)", (t.events.map { TrackPoint.parse(it.location)!! } + t.dwells.map { TrackPoint.parse(it.location)!! })
+            .all { offRoadM(it) < 2.0 })
         check("판교 일대 좌표", t.track.all { it.lat in 37.38..37.42 && it.lon in 127.09..127.13 })
         check("이벤트 5건 모두 위치 있음", t.events.size == 5 && t.events.all { it.location != null })
         check("1분 이상 정차 1곳(105초)", t.dwells.singleOrNull()?.seconds == 105L)
         check("거리: 계기판 기준, 차속 계산과 일치", t.distanceSource == DistanceSource.ODOMETER && !t.distanceMismatch && t.distanceKm in 3f..6f) { "${t.distanceKm} ${t.distanceCandidates}" }
         check("과속 이벤트: 88km/h, 제한 60", t.events.any { it.type == DriveEvent.Type.OVERSPEED && it.speedKmh == 88f && it.limitKmh == 60 })
         val marks = RouteModel.marks(t)
-        check("지도 표시 대상 43개(점 37+정차 1+이벤트 5)", marks.size == 43) { "${marks.size}" }
+        check("지도 표시 대상 = 경로 점 + 정차 1 + 이벤트 5", marks.size == t.track.size + 6) { "${marks.size}" }
         val rep = ReportBuilder.route(t)
         check("운행 보고서 안내에 '시연용'", rep.notes.first().startsWith("시연용"))
         val weekly = ReportBuilder.build(ReportType.WEEKLY, store.saved, VehicleSnapshot())
@@ -409,7 +428,11 @@ fun main() {
         val cx = proj.x(dw.lon); val cy = proj.y(dw.lat)
         val center = RouteModel.nearest(marks, proj, cx, cy, 64f)
         check("가운데를 누르면 같은 자리의 급정지", center?.event?.type == DriveEvent.Type.SUDDEN_STOP) { "$center" }
-        val ring = RouteModel.nearest(marks, proj, cx + RouteModel.DWELL_RING_PX, cy, 64f)
+        // Tap the ring on the side away from the other marks along the road (the accel 100 m later is close).
+        val others = marks.filter { it.kind == RouteMark.Kind.EVENT && it.event!!.type != DriveEvent.Type.SUDDEN_STOP }
+        val nearestOther = others.minBy { Math.hypot((proj.x(it.lon) - cx).toDouble(), (proj.y(it.lat) - cy).toDouble()) }
+        val ox = proj.x(nearestOther.lon) - cx; val oy = proj.y(nearestOther.lat) - cy; val on = Math.hypot(ox.toDouble(), oy.toDouble()).toFloat()
+        val ring = RouteModel.nearest(marks, proj, cx - ox / on * RouteModel.DWELL_RING_PX, cy - oy / on * RouteModel.DWELL_RING_PX, 64f)
         check("고리를 누르면 1분 이상 정차", ring?.kind == RouteMark.Kind.DWELL) { "$ring" }
     }
 
