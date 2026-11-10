@@ -1126,7 +1126,13 @@ private fun Legend(color: Color, label: String, outlined: Boolean = false) {
     }
 }
 
-private val clock = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.KOREA)
+/**
+ * Date and time of a map point. A new formatter per call, like ReportBuilder: a formatter kept in a val keeps the
+ * time zone of the moment it was made, so after the car's time zone changed (seen on the emulator: set to Seoul with
+ * the app open) map points showed UTC (15:56) while the trip said 00:56.
+ */
+internal fun markTime(ms: Long): String =
+    "${ReportBuilder.date(ms)} ${java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.KOREA).format(java.util.Date(ms))}"
 
 @Composable
 private fun MarkInfo(m: RouteMark) {
@@ -1138,7 +1144,7 @@ private fun MarkInfo(m: RouteMark) {
     Text(title, fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Palette.ink)
     Spacer(Modifier.height(6.dp))
     val overspeed = m.event?.type == DriveEvent.Type.OVERSPEED
-    KeyValue(if (overspeed) "과속 시작" else "시각", "${ReportBuilder.date(m.timeMs)} ${clock.format(java.util.Date(m.timeMs))}")
+    KeyValue(if (overspeed) "과속 시작" else "시각", markTime(m.timeMs))
     KeyValue(if (overspeed) "최고 속도 (이 지점)" else "속도", m.speedKmh?.let { "%.0f km/h".format(it) } ?: "-")
     KeyValue("제한속도", m.limitKmh?.let { "$it km/h" } ?: "정보 없음")
     m.event?.let { e ->

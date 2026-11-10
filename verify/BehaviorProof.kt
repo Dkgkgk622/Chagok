@@ -1047,6 +1047,19 @@ fun main() {
         }
     }
 
+    println("\n[36] 앱이 켜진 채로 차의 시간대가 바뀔 때 (에뮬레이터에서 서울로 바꾼 경우)")
+    run {
+        val saved = java.util.TimeZone.getDefault()
+        try {
+            val ms = 1_794_326_178_000L // 2026-11-11 00:56:18 KST
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            markTime(ms); ReportBuilder.dateTime(ms)               // used once before the change
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Asia/Seoul"))
+            check("지도 지점 시각이 바뀐 시간대를 따름", markTime(ms) == "2026.11.11 00:56:18") { markTime(ms) }
+            check("운행 시각과 같은 시간대", ReportBuilder.dateTime(ms) == "11.11 00:56") { ReportBuilder.dateTime(ms) }
+        } finally { java.util.TimeZone.setDefault(saved) }
+    }
+
     println("\n결과: 통과 $passed / 실패 $failed")
     if (failed > 0) { println("실패 목록: $failures"); kotlin.system.exitProcess(1) }
 }
