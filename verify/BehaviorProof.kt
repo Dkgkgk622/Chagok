@@ -1018,6 +1018,35 @@ fun main() {
             kotlin.math.abs(panned.y(m.lat) - before.y(m.lat) + 30f) < 0.01f)
     }
 
+    println("\n[35] 운행 중 기기 시계가 바뀔 때 (시동 직후 시간 동기화, 에뮬레이터 아래 PC 시계 수정)")
+    run {
+        val H = 3_600_000L
+        for ((label, jump) in listOf("9시간 뒤로" to -9 * H, "9시간 앞으로" to 9 * H)) {
+            var wall = System.currentTimeMillis() - 600_000; var mono = 0L
+            val clock = TripClock({ wall }, { mono })
+            val store = MemoryStorage(); val r = TripRecorder(store)
+            var gear = Gear.P
+            // Same order as VehicleDataSource: the time is taken with the gear held before this update.
+            fun snap(sec: Long, g: Gear = gear, kmh: Float, odo: Float) {
+                wall += sec * 1000 - mono; mono = sec * 1000
+                val t = clock.now(parked = gear == Gear.P); gear = g
+                r.onSnapshot(VehicleSnapshot(timeMs = t, speedKmh = kmh, gear = g, odometerKm = odo))
+            }
+            snap(0, Gear.P, 0f, 1000f); val startWall = wall
+            snap(1, Gear.D, 0f, 1000f); snap(5, kmh = 40f, odo = 1000f); snap(60, kmh = 40f, odo = 1000.6f)
+            wall += jump                                       // clock set while driving
+            snap(90, kmh = 40f, odo = 1000.9f); snap(150, kmh = 0f, odo = 1001.5f); snap(155, Gear.P, 0f, 1001.5f)
+            val t = store.saved.closedTrips
+            check("$label: 운행이 사라지지 않음", t.size == 1) { "trips=${t.size}" }
+            check("$label: 운행 시간 그대로 (154초)", t.singleOrNull()?.durationMs == 154_000L) { "${t.singleOrNull()?.durationMs}" }
+            check("$label: 출발 시각은 출발 때 시계", t.singleOrNull()?.startMs == startWall + 1000) { "${t.singleOrNull()?.startMs} vs ${startWall + 1000}" }
+            check("$label: 거리도 그대로 (약 1.5km)", kotlin.math.abs((t.singleOrNull()?.distanceKm ?: 0f) - 1.5f) < 0.1f) { "${t.singleOrNull()?.distanceKm}" }
+            // Parked again: the next trip starts on the corrected clock.
+            snap(200, Gear.P, 0f, 1001.5f); snap(201, Gear.D, 0f, 1001.5f)
+            check("$label: 세운 뒤 다음 운행은 바뀐 시계로 시작", store.saved.openTrip?.startMs == wall) { "${store.saved.openTrip?.startMs} vs $wall" }
+        }
+    }
+
     println("\n결과: 통과 $passed / 실패 $failed")
     if (failed > 0) { println("실패 목록: $failures"); kotlin.system.exitProcess(1) }
 }

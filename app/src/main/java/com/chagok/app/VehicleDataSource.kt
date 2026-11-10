@@ -381,7 +381,10 @@ class VehicleDataSource(private val context: Context) {
     /** Lets other sources (navigation) show their status on the data check screen. */
     fun reportExternal(field: Field, signal: Signal) = setSignal(field, signal)
 
-    private fun now() = System.currentTimeMillis()
+    private val clock = TripClock(System::currentTimeMillis, android.os.SystemClock::elapsedRealtime)
+
+    /** Snapshot time; parked = the gear before this update (so the P that ends a trip is still on the drive's clock). */
+    private fun now() = clock.now(parked = _snapshot.value.gear.let { it == null || it == Gear.P })
 
     companion object {
         private const val TAG = "Chagok"
@@ -392,5 +395,27 @@ class VehicleDataSource(private val context: Context) {
         private const val GEAR_PARK = 0x0004
         private const val GEAR_DRIVE = 0x0008
         private const val GEAR_FIRST = 0x0010
+    }
+}
+
+/**
+ * Time stamps that cannot jump in the middle of a drive.
+ *
+ * Why: trips are measured by snapshot time (duration, distance = speed x elapsed time). If the wall clock is set while
+ * driving (time sync after start-up, or the PC clock corrected under the emulator), a 9-hour step back made the trip
+ * look negative and it was discarded; a step forward made a 40-second drive 9 hours long.
+ * So while in gear the clock advances by the monotonic timer from the wall time read when parked;
+ * once parked it follows the wall clock again (the next trip starts on the corrected time).
+ */
+class TripClock(private val wall: () -> Long, private val mono: () -> Long) {
+    private var anchorWall = 0L
+    private var anchorMono = 0L
+    private var anchored = false
+
+    @Synchronized
+    fun now(parked: Boolean): Long {
+        val m = mono()
+        if (!anchored || parked) { anchorWall = wall(); anchorMono = m; anchored = true }
+        return anchorWall + (m - anchorMono)
     }
 }
